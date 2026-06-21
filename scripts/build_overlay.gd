@@ -56,8 +56,10 @@ func tile_size() -> float:
 	return (size.y - GRID_TOP) / CitySim.GRID_ROWS
 
 func _draw() -> void:
-	var sim := City.sim
 	var tile := tile_size()
+	if tile <= 1.0:
+		return  # not sized yet
+	var sim := City.sim
 	var pulse := 0.55 + 0.35 * sin(_t * 4.0)
 	for i in CitySim.MAX_SLOTS:
 		var col := i % CitySim.GRID_COLS
@@ -87,6 +89,6 @@ func _draw_building(rect: Rect2, zone: int, tile: float) -> void:
 	draw_rect(rect, color, true)
 	draw_rect(rect, color.darkened(0.4), false, 1.5)
 	var letter: String = CitySim.ZONE_NAME[zone].substr(0, 1)
-	var font_size := int(tile * 0.6)
+	var font_size := maxi(8, int(tile * 0.6))
 	draw_string(_font, Vector2(rect.position.x, rect.get_center().y + font_size * 0.35),
 		letter, HORIZONTAL_ALIGNMENT_CENTER, rect.size.x, font_size, Color(0.1, 0.1, 0.1))
