@@ -15,12 +15,13 @@ var _gradient := Gradient.new()
 func _ready() -> void:
 	# Color of the ambient light across the day. Offsets are fractions of a day.
 	_gradient.offsets = PackedFloat32Array([0.0, 0.25, 0.5, 0.75, 1.0])
+	# Kept bright enough that the city stays readable even at night.
 	_gradient.colors = PackedColorArray([
-		Color(0.20, 0.24, 0.45),  # midnight — cool blue
-		Color(0.95, 0.80, 0.65),  # dawn — warm
+		Color(0.55, 0.58, 0.75),  # midnight — dim cool blue
+		Color(0.95, 0.85, 0.70),  # dawn — warm
 		Color(1.0, 1.0, 1.0),     # noon — full daylight
-		Color(0.95, 0.65, 0.45),  # dusk — orange
-		Color(0.20, 0.24, 0.45),  # back to midnight
+		Color(0.95, 0.70, 0.55),  # dusk — orange
+		Color(0.55, 0.58, 0.75),  # back to midnight
 	])
 	_apply()
 
