@@ -24,8 +24,8 @@ func _make_label(pos: Vector2) -> Label:
 
 func _process(_delta: float) -> void:
 	var s := City.sim
-	_label.text = "🗓 Ano %d   %s   $%d   👥 %d   😊 %d   🔨 %s    " % [
-		s.year(), CitySim.PHASE_NAME[s.phase()],
+	_label.text = "🗓 Ano %d Mês %d   %s   $%d   👥 %d   😊 %d   🔨 %s    " % [
+		s.year(), s.month(), CitySim.PHASE_NAME[s.phase()],
 		int(s.money), int(s.population), int(s.happiness()),
 		CitySim.ZONE_NAME[City.selected_zone],
 	]

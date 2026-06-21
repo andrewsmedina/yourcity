@@ -78,13 +78,13 @@ const ZONE_COST := {
 	Zone.POLICE: 1500.0, Zone.SCHOOL: 1500.0, Zone.HOSPITAL: 1500.0,
 	Zone.ROADS: 1200.0, Zone.POWER: 1800.0,
 }
-const ZONE_UPKEEP := {  # per in-game month
-	Zone.RESIDENTIAL: 10.0, Zone.COMMERCIAL: 20.0, Zone.INDUSTRIAL: 40.0,
-	Zone.POLICE: 80.0, Zone.SCHOOL: 80.0, Zone.HOSPITAL: 80.0,
-	Zone.ROADS: 60.0, Zone.POWER: 100.0,
+const ZONE_UPKEEP := {  # cost per second (salaries/maintenance)
+	Zone.RESIDENTIAL: 0.33, Zone.COMMERCIAL: 0.67, Zone.INDUSTRIAL: 1.33,
+	Zone.POLICE: 2.67, Zone.SCHOOL: 2.67, Zone.HOSPITAL: 2.67,
+	Zone.ROADS: 2.0, Zone.POWER: 3.33,
 }
-const MONTH := 30.0  # seconds per in-game month
-const YEAR := MONTH * 12.0  # 1 in-game year
+const MONTH := 10.0  # seconds per in-game month (calendar only)
+const YEAR := MONTH * 12.0  # 120s per in-game year
 
 # Build grid: 30 columns x 3 rows. Starts with one row unlocked; the rest open
 # up as population grows.
@@ -376,7 +376,7 @@ func _recompute_rates() -> void:
 	for s in slots:
 		if s != null:
 			upkeep += ZONE_UPKEEP[s]
-	upkeep_per_sec = upkeep / MONTH
+	upkeep_per_sec = upkeep
 
 func _indicator_rate(ind: Indicator) -> float:
 	if ind == Indicator.ENERGY:

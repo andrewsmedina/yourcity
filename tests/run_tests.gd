@@ -83,10 +83,9 @@ func _test_residential_zone_grows_population() -> void:
 
 func _test_upkeep_charged_monthly() -> void:
 	var c := CitySim.new(10000.0)
-	c.population = 500.0  # unlock POLICE (Small Town)
 	c.build(CitySim.Zone.POLICE, 0)
-	_expect("upkeep is monthly upkeep / MONTH",
-		is_equal_approx(c.upkeep_per_sec, CitySim.ZONE_UPKEEP[CitySim.Zone.POLICE] / CitySim.MONTH))
+	_expect("upkeep is the per-second cost",
+		is_equal_approx(c.upkeep_per_sec, CitySim.ZONE_UPKEEP[CitySim.Zone.POLICE]))
 
 func _test_net_drives_money() -> void:
 	var c := CitySim.new(10000.0)
