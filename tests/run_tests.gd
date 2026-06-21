@@ -30,6 +30,9 @@ func _initialize() -> void:
 	_test_cannot_respond_without_money()
 	_test_ignored_crime_reduces_population()
 	_test_blackout_decays_all_indicators()
+	_test_phase_tracks_population()
+	_test_zones_lock_behind_phase()
+	_test_save_load_round_trip()
 
 	if _failures > 0:
 		push_error("%d test(s) failed" % _failures)
@@ -79,6 +82,7 @@ func _test_residential_zone_grows_population() -> void:
 
 func _test_upkeep_charged_monthly() -> void:
 	var c := CitySim.new(10000.0)
+	c.population = 500.0  # unlock POLICE (Small Town)
 	c.build(CitySim.Zone.POLICE, 0)
 	_expect("upkeep is monthly upkeep / MONTH",
 		is_equal_approx(c.upkeep_per_sec, CitySim.ZONE_UPKEEP[CitySim.Zone.POLICE] / CitySim.MONTH))
@@ -121,6 +125,7 @@ func _test_indicators_decay_passively() -> void:
 
 func _test_service_boosts_its_indicator() -> void:
 	var c := CitySim.new(10000.0)
+	c.population = 500.0  # unlock POLICE (Small Town)
 	c.build(CitySim.Zone.POLICE, 0)
 	c.advance(1.0)
 	# +SERVICE_BOOST from police, -BASE_DECAY passive.
@@ -212,6 +217,44 @@ func _test_blackout_decays_all_indicators() -> void:
 	var drop := sec_before - sec_after
 	_expect("blackout decays all indicators faster than normal",
 		drop > CitySim.BASE_DECAY + 0.0001)
+
+func _test_phase_tracks_population() -> void:
+	var c := CitySim.new()
+	var village := c.phase()
+	c.population = 600.0
+	var small := c.phase()
+	c.population = 60000.0
+	var metro := c.phase()
+	_expect("phase tracks population",
+		village == CitySim.Phase.VILLAGE
+		and small == CitySim.Phase.SMALL_TOWN
+		and metro == CitySim.Phase.METROPOLIS)
+
+func _test_zones_lock_behind_phase() -> void:
+	var c := CitySim.new(100000.0)
+	var hospital_locked := not c.is_zone_unlocked(CitySim.Zone.HOSPITAL)  # needs CITY
+	var house_ok := c.is_zone_unlocked(CitySim.Zone.RESIDENTIAL)         # from VILLAGE
+	var built_locked := c.build(CitySim.Zone.HOSPITAL, 0)                # should fail
+	c.population = 6000.0  # reach CITY
+	var built_unlocked := c.build(CitySim.Zone.HOSPITAL, 0)
+	_expect("zones lock behind their phase",
+		hospital_locked and house_ok and not built_locked and built_unlocked)
+
+func _test_save_load_round_trip() -> void:
+	var a := CitySim.new(7777.0)
+	a.population = 1234.0
+	a.build(CitySim.Zone.COMMERCIAL, 0)
+	a.build(CitySim.Zone.INDUSTRIAL, 1)
+	a.indicators[CitySim.Indicator.SECURITY] = 42.0
+	var b := CitySim.new()
+	b.from_dict(a.to_dict())
+	_expect("save/load round-trips the city",
+		is_equal_approx(b.money, a.money)
+		and is_equal_approx(b.population, a.population)
+		and b.slots[0] == CitySim.Zone.COMMERCIAL
+		and b.slots[1] == CitySim.Zone.INDUSTRIAL
+		and is_equal_approx(b.indicators[CitySim.Indicator.SECURITY], 42.0)
+		and is_equal_approx(b.revenue_per_sec, a.revenue_per_sec))
 
 func _expect(label: String, ok: bool) -> void:
 	print(("PASS " if ok else "FAIL ") + label)

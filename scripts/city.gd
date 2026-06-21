@@ -12,9 +12,20 @@ signal crisis_ended(crisis: CitySim.CrisisType)
 
 var sim := CitySim.new()
 
+const SAVE_PATH := "user://taskbarcity_save.json"
+const AUTOSAVE_EVERY := 10.0
+
 var _active := {}  # mirror of active crises, for edge detection
+var _autosave_accum := 0.0
+
+func _ready() -> void:
+	load_game()
 
 func _process(delta: float) -> void:
+	_autosave_accum += delta
+	if _autosave_accum >= AUTOSAVE_EVERY:
+		_autosave_accum = 0.0
+		save_game()
 	var prev_money := sim.money
 	var prev_pop := sim.population
 	var prev_slots := sim.slots.size()
@@ -55,3 +66,32 @@ func _diff_crises() -> void:
 		if not now.has(crisis):
 			crisis_ended.emit(crisis)
 	_active = now
+
+# --- Save / load (#40, #41) ---
+
+func save_game() -> void:
+	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
+	if f == null:
+		push_warning("TaskbarCity: could not open save file for writing")
+		return
+	f.store_string(JSON.stringify(sim.to_dict()))
+	f.close()
+
+func load_game() -> bool:
+	if not FileAccess.file_exists(SAVE_PATH):
+		return false
+	var f := FileAccess.open(SAVE_PATH, FileAccess.READ)
+	if f == null:
+		return false
+	var text := f.get_as_text()
+	f.close()
+	var data = JSON.parse_string(text)
+	if typeof(data) != TYPE_DICTIONARY:
+		push_warning("TaskbarCity: save file is corrupt, ignoring")
+		return false
+	sim.from_dict(data)
+	city_changed.emit()
+	return true
+
+func _exit_tree() -> void:
+	save_game()

@@ -20,6 +20,22 @@ enum Zone {
 
 enum Indicator { SECURITY, EDUCATION, HEALTH, TRAFFIC, ENERGY }
 
+enum Phase { VILLAGE, SMALL_TOWN, CITY, METROPOLIS }
+
+const PHASE_NAME := {
+	Phase.VILLAGE: "Vilarejo",
+	Phase.SMALL_TOWN: "Cidade Pequena",
+	Phase.CITY: "Cidade Média",
+	Phase.METROPOLIS: "Metrópole",
+}
+# Population at which each phase begins.
+const PHASE_POP := {
+	Phase.VILLAGE: 0.0,
+	Phase.SMALL_TOWN: 500.0,
+	Phase.CITY: 5000.0,
+	Phase.METROPOLIS: 50000.0,
+}
+
 enum CrisisType { CRIME, EPIDEMIC, DROPOUT, GRIDLOCK, BLACKOUT }
 
 const CRISIS_TYPES := [
@@ -60,6 +76,19 @@ const MONTH := 30.0  # seconds per in-game month
 
 const BASE_SLOTS := 4
 const POP_PER_SLOT := 100.0
+
+# Which phase unlocks each zone (#39). Basics from the start; the rest as the
+# city grows.
+const ZONE_UNLOCK_PHASE := {
+	Zone.RESIDENTIAL: Phase.VILLAGE,
+	Zone.COMMERCIAL: Phase.VILLAGE,
+	Zone.ROADS: Phase.VILLAGE,
+	Zone.POWER: Phase.VILLAGE,
+	Zone.INDUSTRIAL: Phase.SMALL_TOWN,
+	Zone.POLICE: Phase.SMALL_TOWN,
+	Zone.SCHOOL: Phase.CITY,
+	Zone.HOSPITAL: Phase.CITY,
+}
 
 # --- Indicators ---
 const INDICATOR_START := 60.0  # a fresh city starts stable, not yet booming
@@ -148,8 +177,23 @@ func _init(starting_money: float = 1000.0) -> void:
 func unlocked_slots() -> int:
 	return BASE_SLOTS + int(population / POP_PER_SLOT)
 
+## Current city phase, derived from population (#38).
+func phase() -> Phase:
+	if population >= PHASE_POP[Phase.METROPOLIS]:
+		return Phase.METROPOLIS
+	if population >= PHASE_POP[Phase.CITY]:
+		return Phase.CITY
+	if population >= PHASE_POP[Phase.SMALL_TOWN]:
+		return Phase.SMALL_TOWN
+	return Phase.VILLAGE
+
+## Whether a zone is unlocked at the current phase (#39).
+func is_zone_unlocked(zone: Zone) -> bool:
+	return int(phase()) >= int(ZONE_UNLOCK_PHASE[zone])
+
 func can_build(zone: Zone, slot_index: int) -> bool:
-	return slot_index >= 0 and slot_index < slots.size() \
+	return is_zone_unlocked(zone) \
+		and slot_index >= 0 and slot_index < slots.size() \
 		and slots[slot_index] == null \
 		and money >= ZONE_COST[zone]
 
@@ -250,6 +294,42 @@ func _apply_consequence(crisis: CrisisType, delta: float) -> void:
 		CrisisType.BLACKOUT:
 			for ind in INDICATORS:
 				indicators[ind] = maxf(0.0, indicators[ind] - 0.1 * delta)
+
+# --- Serialization (#40, #41) ---
+
+func to_dict() -> Dictionary:
+	var inds := []
+	for ind in INDICATORS:
+		inds.append(indicators[ind])
+	var crises := {}
+	for crisis in _crisis_elapsed:
+		crises[str(crisis)] = _crisis_elapsed[crisis]
+	return {
+		"money": money,
+		"population": population,
+		"slots": slots.duplicate(),
+		"indicators": inds,
+		"crises": crises,
+	}
+
+func from_dict(data: Dictionary) -> void:
+	money = float(data.get("money", money))
+	population = float(data.get("population", population))
+	var saved_slots = data.get("slots", null)
+	if saved_slots != null:
+		slots = []
+		for v in saved_slots:
+			slots.append(null if v == null else int(v))
+	var inds = data.get("indicators", null)
+	if inds != null:
+		for i in INDICATORS.size():
+			if i < inds.size():
+				indicators[INDICATORS[i]] = float(inds[i])
+	_crisis_elapsed = {}
+	for key in data.get("crises", {}):
+		_crisis_elapsed[int(key)] = float(data["crises"][key])
+	_sync_slots()
+	_recompute_rates()
 
 # --- internals ---
 

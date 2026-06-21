@@ -51,6 +51,7 @@ var _sprites: Array[Sprite2D] = []
 var _buttons: Array[Button] = []
 var _built_state: Array = []  # last-rendered slot contents, for change detection
 var _menu: PopupMenu
+var _services: PopupMenu
 var _pending_slot := -1
 
 func _ready() -> void:
@@ -73,14 +74,28 @@ func _build_menu() -> void:
 	_menu = PopupMenu.new()
 	for z in [CitySim.Zone.RESIDENTIAL, CitySim.Zone.COMMERCIAL, CitySim.Zone.INDUSTRIAL]:
 		_menu.add_item(_item_label(z), z)
-	var services := PopupMenu.new()
+	_services = PopupMenu.new()
 	for z in SERVICE_ZONES:
-		services.add_item(_item_label(z), z)
-	services.id_pressed.connect(_on_menu_id_pressed)
-	_menu.add_child(services)
-	_menu.add_submenu_node_item("Serviços", services)
+		_services.add_item(_item_label(z), z)
+	_services.id_pressed.connect(_on_menu_id_pressed)
+	_menu.add_child(_services)
+	_menu.add_submenu_node_item("Serviços", _services)
 	_menu.id_pressed.connect(_on_menu_id_pressed)
 	add_child(_menu)
+
+## Disable zones not yet unlocked at the current phase, with a lock hint (#39).
+func _refresh_menu_locks() -> void:
+	for menu: PopupMenu in [_menu, _services]:
+		for idx in menu.item_count:
+			var id: int = menu.get_item_id(idx)
+			if id < 0:
+				continue  # the "Serviços" submenu entry, not a zone
+			var unlocked := City.sim.is_zone_unlocked(id)
+			menu.set_item_disabled(idx, not unlocked)
+			var label := _item_label(id)
+			if not unlocked:
+				label += "  🔒 %s" % CitySim.PHASE_NAME[CitySim.ZONE_UNLOCK_PHASE[id]]
+			menu.set_item_text(idx, label)
 
 func _item_label(zone: int) -> String:
 	return "%s  ($%d)" % [ZONE_LABEL[zone], int(CitySim.ZONE_COST[zone])]
@@ -151,6 +166,7 @@ func _on_slot_pressed(slot_index: int) -> void:
 	if slot_index >= sim.slots.size() or sim.slots[slot_index] != null:
 		return
 	_pending_slot = slot_index
+	_refresh_menu_locks()
 	_menu.position = DisplayServer.mouse_get_position()
 	_menu.reset_size()
 	_menu.popup()

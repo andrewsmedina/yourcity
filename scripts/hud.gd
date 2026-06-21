@@ -15,6 +15,7 @@ func _ready() -> void:
 
 func _process(_delta: float) -> void:
 	var s := City.sim
-	_label.text = "$%d   pop %d   fel %d   =  $%+.1f/s" % [
+	_label.text = "%s   $%d   pop %d   fel %d   =  $%+.1f/s" % [
+		CitySim.PHASE_NAME[s.phase()],
 		int(s.money), int(s.population), int(s.happiness()), s.net_per_sec(),
 	]
