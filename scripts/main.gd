@@ -13,25 +13,25 @@ func _ready() -> void:
 	print("TaskbarCity booted — Godot ", Engine.get_version_info().string)
 	var w := get_window()
 	print("[geom] window.size=", w.size, " viewport=", get_viewport_rect().size,
-		" content_scale=", w.content_scale_factor,
-		" usable=", DisplayServer.screen_get_usable_rect(w.current_screen))
+		" content_scale=", w.content_scale_factor)
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		_try_build(event.position)
+		var slot := int(event.position.x / _TILE_PX)
+		print("[click] ", event.position, " -> slot ", slot)
+		_try_build(slot)
 	elif event is InputEventKey and event.pressed:
 		if event.keycode == KEY_ENTER or event.keycode == KEY_SPACE:
 			WindowManager.toggle_expanded()
 		elif event.keycode == KEY_C:
 			City.sim.indicators[CitySim.Indicator.SECURITY] = 10.0
 
-func _try_build(pos: Vector2) -> void:
-	if not City.sim.active_crises().is_empty():
-		return  # let the crisis panel take the click
-	var slot := int(pos.x / _TILE_PX)
-	print("[build] click ", pos, " -> slot ", slot)
-	if slot < 0 or slot >= City.sim.slots.size() or City.sim.slots[slot] != null:
-		print("[build] slot ", slot, " not buildable")
+func _try_build(slot: int) -> void:
+	if slot < 0 or slot >= City.sim.slots.size():
+		print("[build] slot ", slot, " out of range (", City.sim.slots.size(), " slots)")
+		return
+	if City.sim.slots[slot] != null:
+		print("[build] slot ", slot, " already occupied")
 		return
 	var ok := City.build(CitySim.Zone.RESIDENTIAL, slot)
-	print("[build] residential -> ", ok)
+	print("[build] residential slot ", slot, " -> ", ok, "  money=", City.sim.money)
