@@ -19,12 +19,20 @@ func _ready() -> void:
 	]
 	resized.connect(queue_redraw)
 
+func _process(_delta: float) -> void:
+	queue_redraw()  # follow the real window size, which can differ from `size`
+
 func _draw() -> void:
 	if _tiles.is_empty():
 		return
 	var t := SRC * SCALE
-	var cols := int(ceil(size.x / t)) + 1
-	var rows := int(ceil(size.y / t)) + 1
+	# Cover the larger of the control size and the actual window, with overdraw,
+	# so there are never gaps regardless of macOS window-size quirks.
+	var win := Vector2(DisplayServer.window_get_size())
+	var w: float = maxf(size.x, win.x)
+	var h: float = maxf(size.y, win.y)
+	var cols := int(ceil(w / t)) + 2
+	var rows := int(ceil(h / t)) + 2
 	for r in rows:
 		for c in cols:
 			var idx: int = abs(hash(Vector2i(c, r))) % _tiles.size()
