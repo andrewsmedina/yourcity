@@ -6,8 +6,8 @@ extends Control
 ## it stays crisp regardless of the day/night tint. Clicks are handled in
 ## main._input (GUI hit-testing is unreliable in this macOS borderless window).
 
-const GRID_TOP := 44.0   # push the grid below the (large) HUD line
-const REF_HEIGHT := 180.0  # grid keeps the idle bar height even when expanded
+const GRID_TOP := 56.0  # push the grid below the (large) HUD line
+const TILE := 48.0      # fixed lot size; the window height grows with row count
 
 const ZONE_COLOR := {
 	CitySim.Zone.RESIDENTIAL: Color(0.40, 0.80, 0.50),
@@ -55,10 +55,9 @@ func _input(event: InputEvent) -> void:
 		return
 	City.build(City.selected_zone, slot)
 
-## Square tile size that fits GRID_ROWS rows below the HUD line. Based on the
-## idle bar height so the grid stays put when the window expands during a crisis.
+## Fixed square lot size (the window is tall enough to hold all the rows).
 func tile_size() -> float:
-	return (REF_HEIGHT - GRID_TOP) / CitySim.GRID_ROWS
+	return TILE
 
 func _draw() -> void:
 	var tile := tile_size()
