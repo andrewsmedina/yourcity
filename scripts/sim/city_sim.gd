@@ -20,6 +20,13 @@ enum Zone {
 
 enum Indicator { SECURITY, EDUCATION, HEALTH, TRAFFIC, ENERGY }
 
+enum CrisisType { CRIME, EPIDEMIC, DROPOUT, GRIDLOCK, BLACKOUT }
+
+const CRISIS_TYPES := [
+	CrisisType.CRIME, CrisisType.EPIDEMIC, CrisisType.DROPOUT,
+	CrisisType.GRIDLOCK, CrisisType.BLACKOUT,
+]
+
 const INDICATORS := [
 	Indicator.SECURITY, Indicator.EDUCATION, Indicator.HEALTH,
 	Indicator.TRAFFIC, Indicator.ENERGY,
@@ -66,6 +73,58 @@ const ENERGY_SUPPLY := 0.6             # energy gain per power plant
 const HAPPY_HIGH := 70.0
 const HAPPY_LOW := 40.0
 
+# --- Crises (#26-#31) ---
+# A crisis starts when its indicator drops below CRISIS_THRESHOLD and clears
+# once it recovers to CRISIS_RECOVERY (hysteresis avoids flicker). There is no
+# hard fail: while active a crisis applies a gradual consequence. RESPONSE_WINDOW
+# is just the urgency timer — responding stays possible after it elapses.
+const CRISIS_THRESHOLD := 30.0
+const CRISIS_RECOVERY := 40.0
+const RESPONSE_WINDOW := 60.0
+
+const CRISIS_INDICATOR := {
+	CrisisType.CRIME: Indicator.SECURITY,
+	CrisisType.EPIDEMIC: Indicator.HEALTH,
+	CrisisType.DROPOUT: Indicator.EDUCATION,
+	CrisisType.GRIDLOCK: Indicator.TRAFFIC,
+	CrisisType.BLACKOUT: Indicator.ENERGY,
+}
+const CRISIS_TITLE := {
+	CrisisType.CRIME: "Onda de Crimes",
+	CrisisType.EPIDEMIC: "Epidemia",
+	CrisisType.DROPOUT: "Evasão Escolar",
+	CrisisType.GRIDLOCK: "Engarrafamento",
+	CrisisType.BLACKOUT: "Apagão",
+}
+# 2-3 response options per crisis: cheap small bump vs expensive big fix.
+const CRISIS_RESPONSES := {
+	CrisisType.CRIME: [
+		{"label": "Construir delegacia", "cost": 5000.0, "bump": 40.0},
+		{"label": "Instalar câmeras", "cost": 2000.0, "bump": 25.0},
+		{"label": "Contratar policiais", "cost": 1000.0, "bump": 15.0},
+	],
+	CrisisType.EPIDEMIC: [
+		{"label": "Construir hospital", "cost": 5000.0, "bump": 40.0},
+		{"label": "Campanha de vacinação", "cost": 2000.0, "bump": 25.0},
+		{"label": "Contratar médicos", "cost": 1000.0, "bump": 15.0},
+	],
+	CrisisType.DROPOUT: [
+		{"label": "Construir escola", "cost": 5000.0, "bump": 40.0},
+		{"label": "Bolsas de estudo", "cost": 2000.0, "bump": 25.0},
+		{"label": "Contratar professores", "cost": 1000.0, "bump": 15.0},
+	],
+	CrisisType.GRIDLOCK: [
+		{"label": "Expandir vias", "cost": 5000.0, "bump": 40.0},
+		{"label": "Transporte público", "cost": 2000.0, "bump": 25.0},
+		{"label": "Sincronizar semáforos", "cost": 1000.0, "bump": 15.0},
+	],
+	CrisisType.BLACKOUT: [
+		{"label": "Construir usina", "cost": 5000.0, "bump": 40.0},
+		{"label": "Comprar energia", "cost": 2000.0, "bump": 25.0},
+		{"label": "Racionar consumo", "cost": 1000.0, "bump": 15.0},
+	],
+}
+
 var money: float
 var population: float
 var revenue_per_sec: float
@@ -74,6 +133,8 @@ var pop_per_sec: float
 var indicators := {}  # Indicator -> float (0..100)
 
 var slots: Array = []  # each entry is a Zone value, or null when empty
+
+var _crisis_elapsed := {}  # CrisisType -> seconds active (key present iff active)
 
 func _init(starting_money: float = 1000.0) -> void:
 	money = starting_money
@@ -125,7 +186,70 @@ func advance(delta: float) -> void:
 	population = maxf(0.0, population + pop_per_sec * _pop_factor() * delta)
 	for ind in INDICATORS:
 		indicators[ind] = clampf(indicators[ind] + _indicator_rate(ind) * delta, 0.0, 100.0)
+	_update_crises(delta)
 	_sync_slots()
+
+# --- Crises ---
+
+func active_crises() -> Array:
+	return _crisis_elapsed.keys()
+
+func is_crisis_active(crisis: CrisisType) -> bool:
+	return _crisis_elapsed.has(crisis)
+
+func crisis_elapsed(crisis: CrisisType) -> float:
+	return _crisis_elapsed.get(crisis, 0.0)
+
+## Seconds left in the urgency window (0 once it elapses; response still works).
+func crisis_time_left(crisis: CrisisType) -> float:
+	return maxf(0.0, RESPONSE_WINDOW - crisis_elapsed(crisis))
+
+func responses_for(crisis: CrisisType) -> Array:
+	return CRISIS_RESPONSES[crisis]
+
+## Pay for and apply a crisis response. Returns false (no-op) if the crisis
+## isn't active, the index is invalid, or there isn't enough money.
+func respond(crisis: CrisisType, response_index: int) -> bool:
+	if not _crisis_elapsed.has(crisis):
+		return false
+	var responses: Array = CRISIS_RESPONSES[crisis]
+	if response_index < 0 or response_index >= responses.size():
+		return false
+	var option: Dictionary = responses[response_index]
+	if money < option.cost:
+		return false
+	money -= option.cost
+	var ind: Indicator = CRISIS_INDICATOR[crisis]
+	indicators[ind] = clampf(indicators[ind] + option.bump, 0.0, 100.0)
+	if indicators[ind] >= CRISIS_RECOVERY:
+		_crisis_elapsed.erase(crisis)
+	return true
+
+func _update_crises(delta: float) -> void:
+	for crisis in CRISIS_TYPES:
+		var value: float = indicators[CRISIS_INDICATOR[crisis]]
+		if _crisis_elapsed.has(crisis):
+			if value >= CRISIS_RECOVERY:
+				_crisis_elapsed.erase(crisis)
+			else:
+				_crisis_elapsed[crisis] += delta
+				_apply_consequence(crisis, delta)
+		elif value < CRISIS_THRESHOLD:
+			_crisis_elapsed[crisis] = 0.0  # crisis begins
+
+# Gradual consequence of an ignored crisis — never an instant fail (#30).
+func _apply_consequence(crisis: CrisisType, delta: float) -> void:
+	match crisis:
+		CrisisType.CRIME:
+			population = maxf(0.0, population - 0.2 * delta)
+		CrisisType.EPIDEMIC:
+			population = maxf(0.0, population - 0.1 * delta)
+			money -= 5.0 * delta
+		CrisisType.DROPOUT, CrisisType.GRIDLOCK:
+			money -= 5.0 * delta
+		CrisisType.BLACKOUT:
+			for ind in INDICATORS:
+				indicators[ind] = maxf(0.0, indicators[ind] - 0.1 * delta)
 
 # --- internals ---
 

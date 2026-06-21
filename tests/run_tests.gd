@@ -23,6 +23,13 @@ func _initialize() -> void:
 	_test_energy_drains_faster_with_more_zones()
 	_test_high_happiness_boosts_population()
 	_test_low_happiness_causes_emigration()
+	_test_crisis_starts_below_threshold()
+	_test_no_crisis_above_threshold()
+	_test_crisis_clears_on_recovery()
+	_test_response_bumps_indicator_and_costs()
+	_test_cannot_respond_without_money()
+	_test_ignored_crime_reduces_population()
+	_test_blackout_decays_all_indicators()
 
 	if _failures > 0:
 		push_error("%d test(s) failed" % _failures)
@@ -151,6 +158,60 @@ func _test_low_happiness_causes_emigration() -> void:
 	c.population = 100.0
 	c.advance(2.0)
 	_expect("low happiness causes emigration", is_equal_approx(c.population, 98.0))
+
+func _test_crisis_starts_below_threshold() -> void:
+	var c := CitySim.new()
+	c.indicators[CitySim.Indicator.SECURITY] = 20.0
+	c.advance(0.1)
+	_expect("crisis starts below threshold", c.is_crisis_active(CitySim.CrisisType.CRIME))
+
+func _test_no_crisis_above_threshold() -> void:
+	var c := CitySim.new()
+	c.advance(0.1)
+	_expect("no crisis while indicators are healthy", c.active_crises().is_empty())
+
+func _test_crisis_clears_on_recovery() -> void:
+	var c := CitySim.new()
+	c.indicators[CitySim.Indicator.SECURITY] = 20.0
+	c.advance(0.1)
+	c.indicators[CitySim.Indicator.SECURITY] = 50.0  # back above recovery
+	c.advance(0.1)
+	_expect("crisis clears on recovery", not c.is_crisis_active(CitySim.CrisisType.CRIME))
+
+func _test_response_bumps_indicator_and_costs() -> void:
+	var c := CitySim.new(10000.0)
+	c.indicators[CitySim.Indicator.SECURITY] = 20.0
+	c.advance(0.1)
+	var ok := c.respond(CitySim.CrisisType.CRIME, 2)  # contratar policiais: 1000, +15
+	var sec: float = c.indicators[CitySim.Indicator.SECURITY]
+	_expect("response costs money and bumps the indicator",
+		ok and is_equal_approx(c.money, 9000.0) and sec > 34.0 and sec < 36.0)
+
+func _test_cannot_respond_without_money() -> void:
+	var c := CitySim.new(100.0)
+	c.indicators[CitySim.Indicator.SECURITY] = 20.0
+	c.advance(0.1)
+	var ok := c.respond(CitySim.CrisisType.CRIME, 0)  # delegacia: 5000
+	_expect("cannot respond without money", not ok and is_equal_approx(c.money, 100.0))
+
+func _test_ignored_crime_reduces_population() -> void:
+	var c := CitySim.new()
+	c.population = 100.0
+	c.indicators[CitySim.Indicator.SECURITY] = 20.0
+	c.advance(0.5)  # crisis begins
+	c.advance(1.0)  # active and ignored — consequence applies
+	_expect("ignored crime reduces population", c.population < 100.0)
+
+func _test_blackout_decays_all_indicators() -> void:
+	var c := CitySim.new()
+	c.indicators[CitySim.Indicator.ENERGY] = 20.0
+	c.advance(0.5)  # blackout begins
+	var sec_before: float = c.indicators[CitySim.Indicator.SECURITY]
+	c.advance(1.0)  # active blackout drags every indicator down extra
+	var sec_after: float = c.indicators[CitySim.Indicator.SECURITY]
+	var drop := sec_before - sec_after
+	_expect("blackout decays all indicators faster than normal",
+		drop > CitySim.BASE_DECAY + 0.0001)
 
 func _expect(label: String, ok: bool) -> void:
 	print(("PASS " if ok else "FAIL ") + label)
