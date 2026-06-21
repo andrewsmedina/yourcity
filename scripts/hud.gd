@@ -1,37 +1,35 @@
 extends CanvasLayer
 
-## Economy HUD (issue #18): phase, balance, population, happiness and net rate,
-## plus a beginner hint while the city is still empty. On its own CanvasLayer so
-## the day/night CanvasModulate doesn't tint the text.
+## Economy HUD (issue #18): phase, balance, population, happiness, selected zone,
+## and the net rate colored by sign (green = earning, red = losing). On its own
+## CanvasLayer so the day/night CanvasModulate doesn't tint the text.
 
 var _label: Label
-var _hint: Label
+var _net: Label
 
 func _ready() -> void:
-	_label = Label.new()
-	_label.position = Vector2(12, 8)
-	_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_label = _make_label(Vector2(12, 3))
 	_label.add_theme_color_override("font_color", Color.WHITE)
-	_label.add_theme_color_override("font_outline_color", Color.BLACK)
-	_label.add_theme_constant_override("outline_size", 4)
-	add_child(_label)
+	_net = _make_label(Vector2(0, 3))
 
-	_hint = Label.new()
-	_hint.position = Vector2(12, 28)
-	_hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_hint.add_theme_color_override("font_color", Color(0.7, 0.9, 1.0))
-	_hint.add_theme_color_override("font_outline_color", Color.BLACK)
-	_hint.add_theme_constant_override("outline_size", 4)
-	_hint.text = "Teclas 1-8 escolhem a zona  ·  clique num quadrado azul para construir  ·  R reinicia"
-	add_child(_hint)
+func _make_label(pos: Vector2) -> Label:
+	var label := Label.new()
+	label.position = pos
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.add_theme_color_override("font_outline_color", Color.BLACK)
+	label.add_theme_constant_override("outline_size", 4)
+	add_child(label)
+	return label
 
 func _process(_delta: float) -> void:
 	var s := City.sim
-	_label.text = "%s   $%d   pop %d   fel %d   =  $%+.1f/s    🔨 %s" % [
+	_label.text = "%s   $%d   👥 %d   😊 %d   🔨 %s    " % [
 		CitySim.PHASE_NAME[s.phase()],
-		int(s.money), int(s.population), int(s.happiness()), s.net_per_sec(),
+		int(s.money), int(s.population), int(s.happiness()),
 		CitySim.ZONE_NAME[City.selected_zone],
 	]
-	# Hint stays until the player builds their first zone; hidden during a crisis
-	# so it doesn't overlap the decision panel.
-	_hint.visible = s.active_crises().is_empty() and s.slots.all(func(slot): return slot == null)
+	var net := s.net_per_sec()
+	_net.text = "%+.1f $/s" % net
+	_net.position.x = _label.position.x + _label.get_minimum_size().x
+	_net.add_theme_color_override("font_color",
+		Color(0.4, 1.0, 0.5) if net >= 0.0 else Color(1.0, 0.45, 0.45))
