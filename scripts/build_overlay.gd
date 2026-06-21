@@ -32,6 +32,25 @@ func _process(delta: float) -> void:
 	_t += delta
 	queue_redraw()
 
+func _input(event: InputEvent) -> void:
+	if not (event is InputEventMouseButton and event.pressed
+			and event.button_index == MOUSE_BUTTON_LEFT):
+		return
+	if not City.sim.active_crises().is_empty():
+		return  # leave clicks for the crisis flow while one is active
+	# Use local mouse position so clicks map to the same space we draw in,
+	# regardless of window scaling on macOS.
+	var p := get_local_mouse_position()
+	var tile := tile_size()
+	var col := int(p.x / tile)
+	var row := int((p.y - GRID_TOP) / tile)
+	if col < 0 or col >= CitySim.GRID_COLS or row < 0 or row >= CitySim.GRID_ROWS:
+		return
+	var slot := row * CitySim.GRID_COLS + col
+	if slot >= City.sim.slots.size() or City.sim.slots[slot] != null:
+		return
+	City.build(City.selected_zone, slot)
+
 ## Square tile size that fits GRID_ROWS rows below the HUD line.
 func tile_size() -> float:
 	return (size.y - GRID_TOP) / CitySim.GRID_ROWS

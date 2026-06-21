@@ -90,7 +90,7 @@ const MONTH := 30.0  # seconds per in-game month
 const GRID_COLS := 30
 const GRID_ROWS := 3
 const MAX_SLOTS := GRID_COLS * GRID_ROWS  # 90
-const BASE_SLOTS := 30
+const BASE_SLOTS := MAX_SLOTS  # whole grid buildable from the start
 const POP_PER_SLOT := 50.0
 
 # Which phase unlocks each zone (#39). Basics from the start; the rest as the

@@ -15,7 +15,7 @@ func _initialize() -> void:
 	_test_residential_zone_grows_population()
 	_test_upkeep_charged_monthly()
 	_test_net_drives_money()
-	_test_slots_unlock_with_population()
+	_test_grid_starts_full()
 	_test_indicators_start_at_default()
 	_test_happiness_is_average_of_indicators()
 	_test_indicators_decay_passively()
@@ -95,12 +95,10 @@ func _test_net_drives_money() -> void:
 	_expect("money moves by net per second",
 		is_equal_approx(c.money, start + c.net_per_sec()))
 
-func _test_slots_unlock_with_population() -> void:
+func _test_grid_starts_full() -> void:
 	var c := CitySim.new(10000.0)
-	var before := c.slots.size()
-	c.population = CitySim.POP_PER_SLOT  # one milestone worth of residents
 	c.advance(0.0)  # triggers slot sync
-	_expect("a slot unlocks per population milestone", c.slots.size() == before + 1)
+	_expect("the whole grid is buildable from the start", c.slots.size() == CitySim.MAX_SLOTS)
 
 func _test_indicators_start_at_default() -> void:
 	var c := CitySim.new()
