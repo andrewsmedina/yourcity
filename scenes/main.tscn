@@ -1,8 +1,9 @@
-[gd_scene load_steps=4 format=3 uid="uid://b8tcity0main0"]
+[gd_scene load_steps=5 format=3 uid="uid://b8tcity0main0"]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
 [ext_resource type="Script" path="res://scripts/skyline.gd" id="2_skyline"]
 [ext_resource type="Script" path="res://scripts/day_night.gd" id="3_daynight"]
+[ext_resource type="Script" path="res://scripts/hud.gd" id="4_hud"]
 
 [node name="Main" type="Node2D"]
 script = ExtResource("1_main")
@@ -13,9 +14,5 @@ script = ExtResource("3_daynight")
 [node name="Skyline" type="Node2D" parent="."]
 script = ExtResource("2_skyline")
 
-[node name="Title" type="Label" parent="."]
-offset_left = 16.0
-offset_top = 8.0
-offset_right = 300.0
-offset_bottom = 40.0
-text = "🏙️ TaskbarCity"
+[node name="HUD" type="CanvasLayer" parent="."]
+script = ExtResource("4_hud")

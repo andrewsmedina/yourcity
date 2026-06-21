@@ -26,6 +26,7 @@ City="*res://scripts/city.gd"
 
 window/size/viewport_width=960
 window/size/viewport_height=120
+window/subwindows/embed_subwindows=false
 
 [rendering]
 
