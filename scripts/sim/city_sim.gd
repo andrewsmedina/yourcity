@@ -176,7 +176,7 @@ var slots: Array = []  # each entry is a Zone value, or null when empty
 
 var _crisis_elapsed := {}  # CrisisType -> seconds active (key present iff active)
 
-func _init(starting_money: float = 5000.0) -> void:
+func _init(starting_money: float = 50000.0) -> void:
 	money = starting_money
 	population = 0.0
 	for ind in INDICATORS:
