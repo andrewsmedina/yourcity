@@ -85,7 +85,7 @@ const ZONE_UPKEEP := {  # per in-game month
 }
 const MONTH := 30.0  # seconds per in-game month
 
-const BASE_SLOTS := 4
+const BASE_SLOTS := 16
 const POP_PER_SLOT := 100.0
 
 # Which phase unlocks each zone (#39). Basics from the start; the rest as the
