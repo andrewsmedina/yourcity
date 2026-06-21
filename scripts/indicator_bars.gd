@@ -4,11 +4,13 @@ extends Control
 ## drawn top-right. Full-rect but mouse-transparent so it never steals clicks
 ## from the build slots underneath.
 
-const _BAR_W := 70.0
-const _BAR_H := 7.0
-const _GAP := 3.0
-const _MARGIN := 10.0
-const _LABEL_W := 34.0
+const _BAR_W := 150.0
+const _BAR_H := 13.0
+const _GAP := 4.0
+const _MARGIN := 8.0
+const _LABEL_W := 46.0
+const _VALUE_W := 30.0
+const _FONT_SIZE := 12
 
 var _rows: Array = []  # [{ label, color, getter:Callable }]
 var _font: Font
@@ -31,17 +33,20 @@ func _process(_delta: float) -> void:
 func _draw() -> void:
 	var sim := City.sim
 	var right := get_viewport_rect().size.x - _MARGIN
-	var x := right - _BAR_W
+	var x := right - _VALUE_W - _BAR_W
 	var label_x := x - _LABEL_W
 	var y := _MARGIN
 	for row in _rows:
-		_draw_bar(label_x, x, y, row.label, sim.indicators[row.ind] / 100.0, row.color)
+		_draw_bar(label_x, x, y, row.label, sim.indicators[row.ind], row.color)
 		y += _BAR_H + _GAP
 	# Happiness summary bar.
-	_draw_bar(label_x, x, y + 2.0, "Fel", sim.happiness() / 100.0, Color.WHITE)
+	_draw_bar(label_x, x, y + 3.0, "Fel", sim.happiness(), Color.WHITE)
 
-func _draw_bar(label_x: float, x: float, y: float, label: String, fill: float, color: Color) -> void:
-	draw_string(_font, Vector2(label_x, y + _BAR_H), label,
-		HORIZONTAL_ALIGNMENT_LEFT, _LABEL_W, 9, Color.WHITE)
-	draw_rect(Rect2(x, y, _BAR_W, _BAR_H), Color(0, 0, 0, 0.5))
-	draw_rect(Rect2(x, y, _BAR_W * clampf(fill, 0.0, 1.0), _BAR_H), color)
+func _draw_bar(label_x: float, x: float, y: float, label: String, value: float, color: Color) -> void:
+	var text_y := y + _BAR_H - 2.0
+	draw_string(_font, Vector2(label_x, text_y), label,
+		HORIZONTAL_ALIGNMENT_LEFT, _LABEL_W, _FONT_SIZE, Color.WHITE)
+	draw_rect(Rect2(x, y, _BAR_W, _BAR_H), Color(0, 0, 0, 0.55))
+	draw_rect(Rect2(x, y, _BAR_W * clampf(value / 100.0, 0.0, 1.0), _BAR_H), color)
+	draw_string(_font, Vector2(x + _BAR_W + 4.0, text_y), str(int(value)),
+		HORIZONTAL_ALIGNMENT_LEFT, _VALUE_W, _FONT_SIZE, Color.WHITE)
