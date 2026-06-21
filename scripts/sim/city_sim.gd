@@ -100,10 +100,10 @@ const ZONE_UNLOCK_PHASE := {
 	Zone.COMMERCIAL: Phase.VILLAGE,
 	Zone.ROADS: Phase.VILLAGE,
 	Zone.POWER: Phase.VILLAGE,
-	Zone.INDUSTRIAL: Phase.SMALL_TOWN,
-	Zone.POLICE: Phase.SMALL_TOWN,
-	Zone.SCHOOL: Phase.CITY,
-	Zone.HOSPITAL: Phase.CITY,
+	Zone.INDUSTRIAL: Phase.VILLAGE,
+	Zone.POLICE: Phase.VILLAGE,
+	Zone.SCHOOL: Phase.VILLAGE,
+	Zone.HOSPITAL: Phase.VILLAGE,
 }
 
 # --- Indicators ---

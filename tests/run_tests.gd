@@ -31,7 +31,7 @@ func _initialize() -> void:
 	_test_ignored_crime_reduces_population()
 	_test_blackout_decays_all_indicators()
 	_test_phase_tracks_population()
-	_test_zones_lock_behind_phase()
+	_test_all_zones_unlocked_from_start()
 	_test_save_load_round_trip()
 
 	if _failures > 0:
@@ -228,15 +228,14 @@ func _test_phase_tracks_population() -> void:
 		and small == CitySim.Phase.SMALL_TOWN
 		and metro == CitySim.Phase.METROPOLIS)
 
-func _test_zones_lock_behind_phase() -> void:
+func _test_all_zones_unlocked_from_start() -> void:
 	var c := CitySim.new(100000.0)
-	var hospital_locked := not c.is_zone_unlocked(CitySim.Zone.HOSPITAL)  # needs CITY
-	var house_ok := c.is_zone_unlocked(CitySim.Zone.RESIDENTIAL)         # from VILLAGE
-	var built_locked := c.build(CitySim.Zone.HOSPITAL, 0)                # should fail
-	c.population = 6000.0  # reach CITY
-	var built_unlocked := c.build(CitySim.Zone.HOSPITAL, 0)
-	_expect("zones lock behind their phase",
-		hospital_locked and house_ok and not built_locked and built_unlocked)
+	var all_unlocked := true
+	for zone in CitySim.ZONE_NAME:
+		if not c.is_zone_unlocked(zone):
+			all_unlocked = false
+	var built_hospital := c.build(CitySim.Zone.HOSPITAL, 0)
+	_expect("every zone is buildable from the start", all_unlocked and built_hospital)
 
 func _test_save_load_round_trip() -> void:
 	var a := CitySim.new(7777.0)
