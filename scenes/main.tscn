@@ -1,10 +1,14 @@
-[gd_scene load_steps=3 format=3 uid="uid://b8tcity0main0"]
+[gd_scene load_steps=4 format=3 uid="uid://b8tcity0main0"]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
 [ext_resource type="Script" path="res://scripts/skyline.gd" id="2_skyline"]
+[ext_resource type="Script" path="res://scripts/day_night.gd" id="3_daynight"]
 
 [node name="Main" type="Node2D"]
 script = ExtResource("1_main")
+
+[node name="DayNight" type="CanvasModulate" parent="."]
+script = ExtResource("3_daynight")
 
 [node name="Skyline" type="Node2D" parent="."]
 script = ExtResource("2_skyline")
