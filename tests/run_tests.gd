@@ -30,6 +30,7 @@ func _initialize() -> void:
 	_test_cannot_respond_without_money()
 	_test_ignored_crime_reduces_population()
 	_test_blackout_decays_all_indicators()
+	_test_city_ages_in_years()
 	_test_phase_tracks_population()
 	_test_all_zones_unlocked_from_start()
 	_test_save_load_round_trip()
@@ -215,6 +216,13 @@ func _test_blackout_decays_all_indicators() -> void:
 	var drop := sec_before - sec_after
 	_expect("blackout decays all indicators faster than normal",
 		drop > CitySim.BASE_DECAY + 0.0001)
+
+func _test_city_ages_in_years() -> void:
+	var c := CitySim.new()
+	var start_year := c.year()
+	c.advance(CitySim.YEAR)  # one full year passes
+	_expect("city age advances one year per YEAR seconds",
+		start_year == 1 and c.year() == 2)
 
 func _test_phase_tracks_population() -> void:
 	var c := CitySim.new()

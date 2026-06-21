@@ -84,6 +84,7 @@ const ZONE_UPKEEP := {  # per in-game month
 	Zone.ROADS: 60.0, Zone.POWER: 100.0,
 }
 const MONTH := 30.0  # seconds per in-game month
+const YEAR := MONTH * 12.0  # 1 in-game year
 
 # Build grid: 30 columns x 3 rows. Starts with one row unlocked; the rest open
 # up as population grows.
@@ -172,6 +173,7 @@ const CRISIS_RESPONSES := {
 
 var money: float
 var population: float
+var elapsed: float  # seconds the city has been running, for its age/calendar
 var revenue_per_sec: float
 var upkeep_per_sec: float
 var pop_per_sec: float
@@ -184,6 +186,7 @@ var _crisis_elapsed := {}  # CrisisType -> seconds active (key present iff activ
 func _init(starting_money: float = 50000.0) -> void:
 	money = starting_money
 	population = 0.0
+	elapsed = 0.0
 	for ind in INDICATORS:
 		indicators[ind] = INDICATOR_START
 	_sync_slots()
@@ -240,8 +243,17 @@ func happiness() -> float:
 func net_per_sec() -> float:
 	return revenue_per_sec * _revenue_factor() - upkeep_per_sec
 
+## City age in whole years (starts at Year 1).
+func year() -> int:
+	return int(elapsed / YEAR) + 1
+
+## Current month within the year (1-12).
+func month() -> int:
+	return int(elapsed / MONTH) % 12 + 1
+
 ## Advance the simulation by `delta` seconds.
 func advance(delta: float) -> void:
+	elapsed += delta
 	money += (revenue_per_sec * _revenue_factor() - upkeep_per_sec) * delta
 	population = maxf(0.0, population + pop_per_sec * _pop_factor() * delta)
 	for ind in INDICATORS:
@@ -324,6 +336,7 @@ func to_dict() -> Dictionary:
 	return {
 		"money": money,
 		"population": population,
+		"elapsed": elapsed,
 		"slots": slots.duplicate(),
 		"indicators": inds,
 		"crises": crises,
@@ -332,6 +345,7 @@ func to_dict() -> Dictionary:
 func from_dict(data: Dictionary) -> void:
 	money = float(data.get("money", money))
 	population = float(data.get("population", population))
+	elapsed = float(data.get("elapsed", elapsed))
 	var saved_slots = data.get("slots", null)
 	if saved_slots != null:
 		slots = []
