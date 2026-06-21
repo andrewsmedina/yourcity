@@ -30,6 +30,7 @@ func _ready() -> void:
 	_font = ThemeDB.fallback_font
 	_zone_textures[CitySim.Zone.ROADS] = load("res://assets/tile_street.png")
 	_zone_textures[CitySim.Zone.RESIDENTIAL] = load("res://assets/tile_residential.png")
+	_zone_textures[CitySim.Zone.HOSPITAL] = load("res://assets/tile_hospital.png")
 	City.city_changed.connect(queue_redraw)
 
 func _process(delta: float) -> void:
