@@ -1,13 +1,17 @@
-[gd_scene load_steps=2 format=3 uid="uid://b8tcity0main0"]
+[gd_scene load_steps=3 format=3 uid="uid://b8tcity0main0"]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
+[ext_resource type="Script" path="res://scripts/skyline.gd" id="2_skyline"]
 
 [node name="Main" type="Node2D"]
 script = ExtResource("1_main")
 
+[node name="Skyline" type="Node2D" parent="."]
+script = ExtResource("2_skyline")
+
 [node name="Title" type="Label" parent="."]
 offset_left = 16.0
-offset_top = 44.0
+offset_top = 8.0
 offset_right = 300.0
-offset_bottom = 76.0
+offset_bottom = 40.0
 text = "🏙️ TaskbarCity"
