@@ -1,12 +1,12 @@
 extends Control
 
-## Build grid (#16, #34). Each slot is a square the size of the "+" marker:
-## empty lots show a pulsing "+", built lots show a colored square with the
-## zone's first letter (R/C/I/D/E/H/V/U). Drawn on its own CanvasLayer so it
-## stays crisp and readable regardless of the day/night tint. Clicks are handled
-## in main._input (GUI hit-testing is unreliable in this macOS borderless window).
+## Build grid (#16, #34): a GRID_COLS x GRID_ROWS grid of square lots. Empty
+## unlocked lots show a pulsing "+", built lots show a colored square with the
+## zone's first letter, locked lots are dimmed. Drawn on its own CanvasLayer so
+## it stays crisp regardless of the day/night tint. Clicks are handled in
+## main._input (GUI hit-testing is unreliable in this macOS borderless window).
 
-const PIXEL_SCALE := 3
+const GRID_TOP := 22.0  # leave room for the HUD line at the top
 
 const ZONE_COLOR := {
 	CitySim.Zone.RESIDENTIAL: Color(0.40, 0.80, 0.50),
@@ -19,14 +19,12 @@ const ZONE_COLOR := {
 	CitySim.Zone.POWER: Color(0.60, 1.00, 0.50),
 }
 
-var _tile_px := 0
 var _t := 0.0
 var _font: Font
 
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_tile_px = CityTiles.TILE * PIXEL_SCALE
 	_font = ThemeDB.fallback_font
 	City.city_changed.connect(queue_redraw)
 
@@ -34,31 +32,42 @@ func _process(delta: float) -> void:
 	_t += delta
 	queue_redraw()
 
+## Square tile size that fits GRID_ROWS rows below the HUD line.
+func tile_size() -> float:
+	return (size.y - GRID_TOP) / CitySim.GRID_ROWS
+
 func _draw() -> void:
 	var sim := City.sim
-	var h := size.y
+	var tile := tile_size()
 	var pulse := 0.55 + 0.35 * sin(_t * 4.0)
-	for i in sim.slots.size():
-		var rect := Rect2(i * _tile_px + 2, h - _tile_px, _tile_px - 4, _tile_px - 2)
-		var zone = sim.slots[i]
-		if zone == null:
-			_draw_empty_lot(rect, pulse)
+	for i in CitySim.MAX_SLOTS:
+		var col := i % CitySim.GRID_COLS
+		var row := i / CitySim.GRID_COLS
+		var rect := Rect2(col * tile + 1.0, GRID_TOP + row * tile + 1.0, tile - 2.0, tile - 2.0)
+		if i >= sim.slots.size():
+			_draw_locked(rect)  # not yet unlocked
+		elif sim.slots[i] == null:
+			_draw_empty(rect, pulse)
 		else:
-			_draw_building(rect, zone)
+			_draw_building(rect, sim.slots[i], tile)
 
-func _draw_empty_lot(rect: Rect2, pulse: float) -> void:
-	draw_rect(rect, Color(0.2, 0.5, 0.85, 0.30 + 0.25 * pulse), true)
-	draw_rect(rect, Color(0.6, 0.85, 1.0, pulse), false, 2.0)
+func _draw_locked(rect: Rect2) -> void:
+	draw_rect(rect, Color(1, 1, 1, 0.05), true)
+	draw_rect(rect, Color(1, 1, 1, 0.10), false, 1.0)
+
+func _draw_empty(rect: Rect2, pulse: float) -> void:
+	draw_rect(rect, Color(0.2, 0.5, 0.85, 0.25 + 0.20 * pulse), true)
+	draw_rect(rect, Color(0.6, 0.85, 1.0, pulse), false, 1.5)
 	var c := rect.get_center()
-	draw_line(c - Vector2(8, 0), c + Vector2(8, 0), Color(1, 1, 1, pulse), 3.0)
-	draw_line(c - Vector2(0, 8), c + Vector2(0, 8), Color(1, 1, 1, pulse), 3.0)
+	var s := rect.size.x * 0.22
+	draw_line(c - Vector2(s, 0), c + Vector2(s, 0), Color(1, 1, 1, pulse), 2.0)
+	draw_line(c - Vector2(0, s), c + Vector2(0, s), Color(1, 1, 1, pulse), 2.0)
 
-func _draw_building(rect: Rect2, zone: int) -> void:
+func _draw_building(rect: Rect2, zone: int, tile: float) -> void:
 	var color: Color = ZONE_COLOR[zone]
 	draw_rect(rect, color, true)
-	draw_rect(rect, color.darkened(0.4), false, 2.0)
+	draw_rect(rect, color.darkened(0.4), false, 1.5)
 	var letter: String = CitySim.ZONE_NAME[zone].substr(0, 1)
-	var font_size := 26
-	var baseline := rect.get_center() + Vector2(0, font_size * 0.35)
-	draw_string(_font, Vector2(rect.position.x, baseline.y), letter,
-		HORIZONTAL_ALIGNMENT_CENTER, rect.size.x, font_size, Color(0.1, 0.1, 0.1))
+	var font_size := int(tile * 0.6)
+	draw_string(_font, Vector2(rect.position.x, rect.get_center().y + font_size * 0.35),
+		letter, HORIZONTAL_ALIGNMENT_CENTER, rect.size.x, font_size, Color(0.1, 0.1, 0.1))

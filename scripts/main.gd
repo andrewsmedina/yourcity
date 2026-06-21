@@ -8,7 +8,7 @@ extends Node2D
 ##   C           — force a Crime crisis (debug)
 ##   R           — reset to a fresh city (debug / recovery)
 
-const _TILE_PX := 48  # CityTiles.TILE(16) * skyline PIXEL_SCALE(3)
+const _GRID_TOP := 22.0  # must match BuildOverlay.GRID_TOP
 
 const _ZONE_KEYS := {
 	KEY_1: CitySim.Zone.RESIDENTIAL,
@@ -26,15 +26,20 @@ func _ready() -> void:
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		_build_at(event.position.x)
+		_build_at(event.position)
 	elif event is InputEventKey and event.pressed:
 		_handle_key(event.keycode)
 
-func _build_at(x: float) -> void:
+func _build_at(pos: Vector2) -> void:
 	if not City.sim.active_crises().is_empty():
 		return  # leave clicks for the crisis flow while one is active
-	var slot := int(x / _TILE_PX)
-	if slot < 0 or slot >= City.sim.slots.size() or City.sim.slots[slot] != null:
+	var tile := (get_viewport_rect().size.y - _GRID_TOP) / CitySim.GRID_ROWS
+	var col := int(pos.x / tile)
+	var row := int((pos.y - _GRID_TOP) / tile)
+	if col < 0 or col >= CitySim.GRID_COLS or row < 0 or row >= CitySim.GRID_ROWS:
+		return
+	var slot := row * CitySim.GRID_COLS + col
+	if slot >= City.sim.slots.size() or City.sim.slots[slot] != null:
 		return
 	City.build(City.selected_zone, slot)
 

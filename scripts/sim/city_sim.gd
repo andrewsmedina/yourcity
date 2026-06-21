@@ -85,8 +85,13 @@ const ZONE_UPKEEP := {  # per in-game month
 }
 const MONTH := 30.0  # seconds per in-game month
 
-const BASE_SLOTS := 16
-const POP_PER_SLOT := 100.0
+# Build grid: 30 columns x 3 rows. Starts with one row unlocked; the rest open
+# up as population grows.
+const GRID_COLS := 30
+const GRID_ROWS := 3
+const MAX_SLOTS := GRID_COLS * GRID_ROWS  # 90
+const BASE_SLOTS := 30
+const POP_PER_SLOT := 50.0
 
 # Which phase unlocks each zone (#39). Basics from the start; the rest as the
 # city grows.
@@ -184,9 +189,9 @@ func _init(starting_money: float = 50000.0) -> void:
 	_sync_slots()
 	_recompute_rates()
 
-## Number of slots currently available to build on.
+## Number of slots currently available to build on (capped at the grid size).
 func unlocked_slots() -> int:
-	return BASE_SLOTS + int(population / POP_PER_SLOT)
+	return mini(MAX_SLOTS, BASE_SLOTS + int(population / POP_PER_SLOT))
 
 ## Current city phase, derived from population (#38).
 func phase() -> Phase:
