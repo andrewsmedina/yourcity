@@ -2,28 +2,47 @@ extends Node2D
 
 ## City skyline AND build grid (issues #10, #12, #16). Each column is a build
 ## slot mirrored from City.sim: locked slots are hidden, empty unlocked slots
-## show a faint lot, built slots show their zone's tile and animate up from the
-## ground when constructed. Clicking an empty lot opens a menu to pick a zone.
+## show a faint lot, built slots show their zone's tile (tinted per kind) and
+## animate up from the ground when constructed. Clicking an empty lot opens a
+## menu to pick a zone; services live in a submenu.
 
 const PIXEL_SCALE := 3
 const _GROW_TIME := 0.35
 
+# Menu item ids are the Zone enum values themselves, so one handler maps back.
 const ZONE_TILE := {
 	CitySim.Zone.RESIDENTIAL: "house",
 	CitySim.Zone.COMMERCIAL: "building_low",
 	CitySim.Zone.INDUSTRIAL: "building_mid",
-	CitySim.Zone.SERVICE: "building_high",
+	CitySim.Zone.POLICE: "building_high",
+	CitySim.Zone.SCHOOL: "building_high",
+	CitySim.Zone.HOSPITAL: "building_high",
+	CitySim.Zone.ROADS: "road",
+	CitySim.Zone.POWER: "building_high",
+}
+const ZONE_TINT := {
+	CitySim.Zone.RESIDENTIAL: Color.WHITE,
+	CitySim.Zone.COMMERCIAL: Color.WHITE,
+	CitySim.Zone.INDUSTRIAL: Color.WHITE,
+	CitySim.Zone.POLICE: Color(0.5, 0.6, 1.0),
+	CitySim.Zone.SCHOOL: Color(1.0, 0.85, 0.3),
+	CitySim.Zone.HOSPITAL: Color(1.0, 0.5, 0.5),
+	CitySim.Zone.ROADS: Color(0.8, 0.8, 0.8),
+	CitySim.Zone.POWER: Color(0.5, 1.0, 0.6),
 }
 const ZONE_LABEL := {
 	CitySim.Zone.RESIDENTIAL: "Residencial",
 	CitySim.Zone.COMMERCIAL: "Comercial",
 	CitySim.Zone.INDUSTRIAL: "Industrial",
-	CitySim.Zone.SERVICE: "Serviços",
+	CitySim.Zone.POLICE: "Delegacia",
+	CitySim.Zone.SCHOOL: "Escola",
+	CitySim.Zone.HOSPITAL: "Hospital",
+	CitySim.Zone.ROADS: "Vias",
+	CitySim.Zone.POWER: "Usina",
 }
-# Menu row order, so a PopupMenu item id maps back to a zone.
-const MENU_ZONES := [
-	CitySim.Zone.RESIDENTIAL, CitySim.Zone.COMMERCIAL,
-	CitySim.Zone.INDUSTRIAL, CitySim.Zone.SERVICE,
+const SERVICE_ZONES := [
+	CitySim.Zone.POLICE, CitySim.Zone.SCHOOL, CitySim.Zone.HOSPITAL,
+	CitySim.Zone.ROADS, CitySim.Zone.POWER,
 ]
 
 var _tile_px := 0
@@ -38,13 +57,25 @@ func _ready() -> void:
 	_tile_px = CityTiles.TILE * PIXEL_SCALE
 	_baseline = get_viewport_rect().size.y
 	_build_columns()
-	_menu = PopupMenu.new()
-	for z in MENU_ZONES:
-		_menu.add_item("%s  ($%d)" % [ZONE_LABEL[z], int(CitySim.ZONE_COST[z])])
-	_menu.id_pressed.connect(_on_menu_id_pressed)
-	add_child(_menu)
+	_build_menu()
 	City.city_changed.connect(refresh)
 	refresh()
+
+func _build_menu() -> void:
+	_menu = PopupMenu.new()
+	for z in [CitySim.Zone.RESIDENTIAL, CitySim.Zone.COMMERCIAL, CitySim.Zone.INDUSTRIAL]:
+		_menu.add_item(_item_label(z), z)
+	var services := PopupMenu.new()
+	for z in SERVICE_ZONES:
+		services.add_item(_item_label(z), z)
+	services.id_pressed.connect(_on_menu_id_pressed)
+	_menu.add_child(services)
+	_menu.add_submenu_node_item("Serviços", services)
+	_menu.id_pressed.connect(_on_menu_id_pressed)
+	add_child(_menu)
+
+func _item_label(zone: int) -> String:
+	return "%s  ($%d)" % [ZONE_LABEL[zone], int(CitySim.ZONE_COST[zone])]
 
 func _build_columns() -> void:
 	var width := int(get_viewport_rect().size.x)
@@ -89,7 +120,7 @@ func refresh() -> void:
 			_built_state[i] = null
 		else:
 			spr.texture = CityTiles.get_tile(ZONE_TILE[zone])
-			spr.modulate = Color.WHITE
+			spr.modulate = ZONE_TINT[zone]
 			if _built_state[i] != zone:
 				_animate_build(spr)
 			else:
@@ -118,5 +149,5 @@ func _on_slot_pressed(slot_index: int) -> void:
 func _on_menu_id_pressed(id: int) -> void:
 	if _pending_slot < 0:
 		return
-	City.build(MENU_ZONES[id], _pending_slot)  # emits city_changed -> refresh()
+	City.build(id, _pending_slot)  # id is the Zone value; emits city_changed
 	_pending_slot = -1

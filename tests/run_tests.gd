@@ -16,6 +16,13 @@ func _initialize() -> void:
 	_test_upkeep_charged_monthly()
 	_test_net_drives_money()
 	_test_slots_unlock_with_population()
+	_test_indicators_start_at_default()
+	_test_happiness_is_average_of_indicators()
+	_test_indicators_decay_passively()
+	_test_service_boosts_its_indicator()
+	_test_energy_drains_faster_with_more_zones()
+	_test_high_happiness_boosts_population()
+	_test_low_happiness_causes_emigration()
 
 	if _failures > 0:
 		push_error("%d test(s) failed" % _failures)
@@ -39,7 +46,7 @@ func _test_cannot_build_on_occupied_slot() -> void:
 
 func _test_cannot_build_without_money() -> void:
 	var c := CitySim.new(100.0)
-	var ok := c.build(CitySim.Zone.SERVICE, 0)  # costs 1500
+	var ok := c.build(CitySim.Zone.POLICE, 0)  # costs 1500
 	_expect("cannot build without enough money", not ok and c.slots[0] == null)
 
 func _test_cannot_build_locked_slot() -> void:
@@ -65,9 +72,9 @@ func _test_residential_zone_grows_population() -> void:
 
 func _test_upkeep_charged_monthly() -> void:
 	var c := CitySim.new(10000.0)
-	c.build(CitySim.Zone.SERVICE, 0)
+	c.build(CitySim.Zone.POLICE, 0)
 	_expect("upkeep is monthly upkeep / MONTH",
-		is_equal_approx(c.upkeep_per_sec, CitySim.ZONE_UPKEEP[CitySim.Zone.SERVICE] / CitySim.MONTH))
+		is_equal_approx(c.upkeep_per_sec, CitySim.ZONE_UPKEEP[CitySim.Zone.POLICE] / CitySim.MONTH))
 
 func _test_net_drives_money() -> void:
 	var c := CitySim.new(10000.0)
@@ -83,6 +90,67 @@ func _test_slots_unlock_with_population() -> void:
 	c.population = CitySim.POP_PER_SLOT  # one milestone worth of residents
 	c.advance(0.0)  # triggers slot sync
 	_expect("a slot unlocks per population milestone", c.slots.size() == before + 1)
+
+func _test_indicators_start_at_default() -> void:
+	var c := CitySim.new()
+	_expect("indicators start at the default",
+		is_equal_approx(c.indicators[CitySim.Indicator.SECURITY], CitySim.INDICATOR_START))
+
+func _test_happiness_is_average_of_indicators() -> void:
+	var c := CitySim.new()
+	c.indicators[CitySim.Indicator.SECURITY] = 100.0
+	c.indicators[CitySim.Indicator.EDUCATION] = 0.0
+	# the other three stay at INDICATOR_START
+	var start := CitySim.INDICATOR_START
+	var expected := (100.0 + 0.0 + start + start + start) / 5.0
+	_expect("happiness is the average of indicators", is_equal_approx(c.happiness(), expected))
+
+func _test_indicators_decay_passively() -> void:
+	var c := CitySim.new()
+	c.advance(10.0)
+	_expect("indicators decay passively",
+		is_equal_approx(c.indicators[CitySim.Indicator.SECURITY],
+			CitySim.INDICATOR_START - CitySim.BASE_DECAY * 10.0))
+
+func _test_service_boosts_its_indicator() -> void:
+	var c := CitySim.new(10000.0)
+	c.build(CitySim.Zone.POLICE, 0)
+	c.advance(1.0)
+	# +SERVICE_BOOST from police, -BASE_DECAY passive.
+	_expect("a service boosts its indicator",
+		is_equal_approx(c.indicators[CitySim.Indicator.SECURITY],
+			CitySim.INDICATOR_START + CitySim.SERVICE_BOOST - CitySim.BASE_DECAY))
+
+func _test_energy_drains_faster_with_more_zones() -> void:
+	var quiet := CitySim.new(10000.0)
+	quiet.advance(1.0)
+	var busy := CitySim.new(10000.0)
+	busy.build(CitySim.Zone.COMMERCIAL, 0)
+	busy.build(CitySim.Zone.COMMERCIAL, 1)
+	busy.advance(1.0)
+	_expect("energy drains faster with more zones",
+		busy.indicators[CitySim.Indicator.ENERGY] < quiet.indicators[CitySim.Indicator.ENERGY])
+
+func _test_high_happiness_boosts_population() -> void:
+	var c := CitySim.new(10000.0)
+	for ind in CitySim.INDICATORS:
+		c.indicators[ind] = 100.0  # happiness 100 -> immigration
+	c.build(CitySim.Zone.RESIDENTIAL, 0)
+	c.build(CitySim.Zone.RESIDENTIAL, 1)
+	c.build(CitySim.Zone.RESIDENTIAL, 2)  # 1 pop/sec base
+	c.advance(2.0)
+	_expect("high happiness boosts population (1.5x)", is_equal_approx(c.population, 3.0))
+
+func _test_low_happiness_causes_emigration() -> void:
+	var c := CitySim.new(10000.0)
+	for ind in CitySim.INDICATORS:
+		c.indicators[ind] = 10.0  # happiness 10 -> emigration
+	c.build(CitySim.Zone.RESIDENTIAL, 0)
+	c.build(CitySim.Zone.RESIDENTIAL, 1)
+	c.build(CitySim.Zone.RESIDENTIAL, 2)  # 1 pop/sec base
+	c.population = 100.0
+	c.advance(2.0)
+	_expect("low happiness causes emigration", is_equal_approx(c.population, 98.0))
 
 func _expect(label: String, ok: bool) -> void:
 	print(("PASS " if ok else "FAIL ") + label)

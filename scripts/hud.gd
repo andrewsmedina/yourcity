@@ -15,7 +15,6 @@ func _ready() -> void:
 
 func _process(_delta: float) -> void:
 	var s := City.sim
-	_label.text = "$%d   pop %d   +$%.1f/s  -$%.1f/s  =  $%+.1f/s" % [
-		int(s.money), int(s.population),
-		s.revenue_per_sec, s.upkeep_per_sec, s.net_per_sec(),
+	_label.text = "$%d   pop %d   fel %d   =  $%+.1f/s" % [
+		int(s.money), int(s.population), int(s.happiness()), s.net_per_sec(),
 	]
