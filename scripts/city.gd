@@ -38,6 +38,15 @@ func _process(delta: float) -> void:
 		city_changed.emit()  # a new slot unlocked
 	_diff_crises()
 
+## Reset to a fresh city (debug/recovery), persisting the clean state.
+func reset() -> void:
+	sim = CitySim.new()
+	_active = {}
+	save_game()
+	money_changed.emit(sim.money)
+	population_changed.emit(sim.population)
+	city_changed.emit()
+
 ## Attempt to build a zone into a slot; emits updates and returns success.
 func build(zone: CitySim.Zone, slot_index: int) -> bool:
 	if not sim.build(zone, slot_index):

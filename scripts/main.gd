@@ -25,6 +25,9 @@ func _input(event: InputEvent) -> void:
 			WindowManager.toggle_expanded()
 		elif event.keycode == KEY_C:
 			City.sim.indicators[CitySim.Indicator.SECURITY] = 10.0
+		elif event.keycode == KEY_R:
+			City.reset()
+			print("[reset] fresh city: money=", City.sim.money)
 
 func _try_build(slot: int) -> void:
 	if slot < 0 or slot >= City.sim.slots.size():

@@ -231,6 +231,7 @@ func advance(delta: float) -> void:
 	for ind in INDICATORS:
 		indicators[ind] = clampf(indicators[ind] + _indicator_rate(ind) * delta, 0.0, 100.0)
 	_update_crises(delta)
+	money = maxf(0.0, money)  # no bottomless debt — keeps the city recoverable
 	_sync_slots()
 
 # --- Crises ---
