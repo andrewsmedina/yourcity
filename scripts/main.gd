@@ -31,6 +31,10 @@ func _handle_key(keycode: int) -> void:
 		City.selected_zone = _ZONE_KEYS[keycode]
 	elif keycode == KEY_ENTER or keycode == KEY_SPACE:
 		WindowManager.toggle_expanded()
+	elif keycode == KEY_EQUAL or keycode == KEY_KP_ADD:
+		Settings.bump(0.1)   # + aumenta a fonte/UI
+	elif keycode == KEY_MINUS or keycode == KEY_KP_SUBTRACT:
+		Settings.bump(-0.1)  # - diminui a fonte/UI
 	elif keycode == KEY_C:
 		City.sim.indicators[CitySim.Indicator.SECURITY] = 10.0
 	elif keycode == KEY_R:

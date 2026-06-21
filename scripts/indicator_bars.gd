@@ -32,21 +32,28 @@ func _process(_delta: float) -> void:
 
 func _draw() -> void:
 	var sim := City.sim
-	var right := get_viewport_rect().size.x - _MARGIN
-	var x := right - _VALUE_W - _BAR_W
-	var label_x := x - _LABEL_W
-	var y := _MARGIN
+	var s: float = Settings.ui_scale
+	var bar_w := _BAR_W * s
+	var bar_h := _BAR_H * s
+	var gap := _GAP * s
+	var label_w := _LABEL_W * s
+	var value_w := _VALUE_W * s
+	var fs := int(_FONT_SIZE * s)
+	var right := get_viewport_rect().size.x - _MARGIN * s
+	var x := right - value_w - bar_w
+	var label_x := x - label_w
+	var y := _MARGIN * s
 	for row in _rows:
-		_draw_bar(label_x, x, y, row.label, sim.indicators[row.ind], row.color)
-		y += _BAR_H + _GAP
-	# Happiness summary bar.
-	_draw_bar(label_x, x, y + 3.0, "Fel", sim.happiness(), Color.WHITE)
+		_draw_bar(label_x, x, y, bar_w, bar_h, fs, row.label, sim.indicators[row.ind], row.color)
+		y += bar_h + gap
+	_draw_bar(label_x, x, y + 3.0 * s, bar_w, bar_h, fs, "Fel", sim.happiness(), Color.WHITE)
 
-func _draw_bar(label_x: float, x: float, y: float, label: String, value: float, color: Color) -> void:
-	var text_y := y + _BAR_H - 2.0
+func _draw_bar(label_x: float, x: float, y: float, bar_w: float, bar_h: float,
+		fs: int, label: String, value: float, color: Color) -> void:
+	var text_y := y + bar_h - 3.0
 	draw_string(_font, Vector2(label_x, text_y), label,
-		HORIZONTAL_ALIGNMENT_LEFT, _LABEL_W, _FONT_SIZE, Color.WHITE)
-	draw_rect(Rect2(x, y, _BAR_W, _BAR_H), Color(0, 0, 0, 0.55))
-	draw_rect(Rect2(x, y, _BAR_W * clampf(value / 100.0, 0.0, 1.0), _BAR_H), color)
-	draw_string(_font, Vector2(x + _BAR_W + 4.0, text_y), str(int(value)),
-		HORIZONTAL_ALIGNMENT_LEFT, _VALUE_W, _FONT_SIZE, Color.WHITE)
+		HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color.WHITE)
+	draw_rect(Rect2(x, y, bar_w, bar_h), Color(0, 0, 0, 0.55))
+	draw_rect(Rect2(x, y, bar_w * clampf(value / 100.0, 0.0, 1.0), bar_h), color)
+	draw_string(_font, Vector2(x + bar_w + 4.0, text_y), str(int(value)),
+		HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color.WHITE)

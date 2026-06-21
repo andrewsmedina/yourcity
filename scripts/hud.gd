@@ -11,6 +11,13 @@ func _ready() -> void:
 	_label = _make_label(Vector2(12, 3))
 	_label.add_theme_color_override("font_color", Color.WHITE)
 	_net = _make_label(Vector2(0, 3))
+	Settings.changed.connect(_apply_scale)
+	_apply_scale()
+
+func _apply_scale() -> void:
+	var fs := int(22 * Settings.ui_scale)
+	_label.add_theme_font_size_override("font_size", fs)
+	_net.add_theme_font_size_override("font_size", fs)
 
 func _make_label(pos: Vector2) -> Label:
 	var label := Label.new()
