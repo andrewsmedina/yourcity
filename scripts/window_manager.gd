@@ -13,8 +13,8 @@ extends Node
 ## panels/struts, so pinning to the usable rect's bottom edge Just Works on all
 ## three. (The macOS menu-bar status icon lives in issue #7.)
 
-const HEIGHT_IDLE := 120
-const HEIGHT_EXPANDED := 300
+const HEIGHT_IDLE := 180
+const HEIGHT_EXPANDED := 360
 
 var _expanded := false
 

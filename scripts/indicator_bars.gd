@@ -4,13 +4,13 @@ extends Control
 ## drawn top-right. Full-rect but mouse-transparent so it never steals clicks
 ## from the build slots underneath.
 
-const _BAR_W := 150.0
-const _BAR_H := 13.0
-const _GAP := 4.0
-const _MARGIN := 8.0
-const _LABEL_W := 46.0
-const _VALUE_W := 30.0
-const _FONT_SIZE := 12
+const _BAR_W := 180.0
+const _BAR_H := 18.0
+const _GAP := 6.0
+const _MARGIN := 10.0
+const _LABEL_W := 58.0
+const _VALUE_W := 38.0
+const _FONT_SIZE := 16
 
 var _rows: Array = []  # [{ label, color, getter:Callable }]
 var _font: Font

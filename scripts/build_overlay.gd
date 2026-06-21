@@ -6,8 +6,8 @@ extends Control
 ## it stays crisp regardless of the day/night tint. Clicks are handled in
 ## main._input (GUI hit-testing is unreliable in this macOS borderless window).
 
-const GRID_TOP := 22.0   # leave room for the HUD line at the top
-const REF_HEIGHT := 120.0  # grid keeps the idle bar height even when expanded
+const GRID_TOP := 34.0   # leave room for the HUD line at the top
+const REF_HEIGHT := 180.0  # grid keeps the idle bar height even when expanded
 
 const ZONE_COLOR := {
 	CitySim.Zone.RESIDENTIAL: Color(0.40, 0.80, 0.50),

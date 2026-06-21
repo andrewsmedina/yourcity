@@ -16,8 +16,9 @@ func _make_label(pos: Vector2) -> Label:
 	var label := Label.new()
 	label.position = pos
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.add_theme_font_size_override("font_size", 22)
 	label.add_theme_color_override("font_outline_color", Color.BLACK)
-	label.add_theme_constant_override("outline_size", 4)
+	label.add_theme_constant_override("outline_size", 5)
 	add_child(label)
 	return label
 
