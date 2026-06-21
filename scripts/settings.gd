@@ -9,7 +9,7 @@ const PATH := "user://settings.json"
 const MIN := 0.7
 const MAX := 3.0
 
-var ui_scale := 1.3
+var ui_scale := 2.3  # default already enlarged (~10 "+" presses)
 
 func _ready() -> void:
 	load_settings()
