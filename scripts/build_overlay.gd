@@ -6,7 +6,7 @@ extends Control
 ## it stays crisp regardless of the day/night tint. Clicks are handled in
 ## main._input (GUI hit-testing is unreliable in this macOS borderless window).
 
-const GRID_TOP := 34.0   # leave room for the HUD line at the top
+const GRID_TOP := 44.0   # push the grid below the (large) HUD line
 const REF_HEIGHT := 180.0  # grid keeps the idle bar height even when expanded
 
 const ZONE_COLOR := {
