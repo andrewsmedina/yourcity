@@ -27,9 +27,10 @@ func _draw() -> void:
 	for i in sim.slots.size():
 		if sim.slots[i] != null:
 			continue  # built lots are drawn by the skyline
-		# Full-height marker so it's easy to see and click in the thin bar.
-		var rect := Rect2(i * _tile_px + 3, 6.0, _tile_px - 6, h - 12.0)
-		draw_rect(rect, Color(0.2, 0.5, 0.85, 0.30 * pulse), true)
+		# Same footprint as the building that will replace it (bottom of the
+		# bar), so the building appears exactly where the "+" was.
+		var rect := Rect2(i * _tile_px + 2, h - _tile_px, _tile_px - 4, _tile_px - 2)
+		draw_rect(rect, Color(0.2, 0.5, 0.85, 0.30 + 0.25 * pulse), true)
 		draw_rect(rect, Color(0.6, 0.85, 1.0, pulse), false, 2.0)
 		var c := rect.get_center()
 		draw_line(c - Vector2(8, 0), c + Vector2(8, 0), Color(1, 1, 1, pulse), 3.0)
