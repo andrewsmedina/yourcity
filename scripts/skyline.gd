@@ -3,13 +3,15 @@ extends Node2D
 ## City skyline AND build grid (issues #10, #12, #16). Each column is a build
 ## slot mirrored from City.sim: locked slots are hidden, empty unlocked slots
 ## show a faint lot, built slots show their zone's tile (tinted per kind) and
-## animate up from the ground when constructed. Clicking an empty lot opens a
-## menu to pick a zone; services live in a submenu.
+## animate up from the ground when constructed.
+##
+## Clicks are captured by a Control on its own CanvasLayer (the canonical way to
+## do GUI input in Godot) rather than per-slot buttons parented to this Node2D,
+## which did not reliably receive input.
 
 const PIXEL_SCALE := 3
 const _GROW_TIME := 0.35
 
-# Menu item ids are the Zone enum values themselves, so one handler maps back.
 const ZONE_TILE := {
 	CitySim.Zone.RESIDENTIAL: "house",
 	CitySim.Zone.COMMERCIAL: "building_low",
@@ -48,7 +50,6 @@ const SERVICE_ZONES := [
 var _tile_px := 0
 var _baseline := 0.0
 var _sprites: Array[Sprite2D] = []
-var _buttons: Array[Button] = []
 var _built_state: Array = []  # last-rendered slot contents, for change detection
 var _menu: PopupMenu
 var _services: PopupMenu
@@ -59,16 +60,20 @@ func _ready() -> void:
 	_baseline = get_viewport_rect().size.y
 	_build_columns()
 	_build_menu()
+	_build_input_layer()
 	City.city_changed.connect(refresh)
 	get_viewport().size_changed.connect(_reflow)
 	refresh()
 
-## Re-anchor columns to the bottom when the window resizes (idle <-> expanded).
-func _reflow() -> void:
-	_baseline = get_viewport_rect().size.y
-	for btn in _buttons:
-		btn.size.y = _baseline
-	refresh()
+func _build_input_layer() -> void:
+	var layer := CanvasLayer.new()
+	layer.layer = 0  # below HUD/crisis so the crisis panel keeps click priority
+	add_child(layer)
+	var ctl := Control.new()
+	ctl.set_anchors_preset(Control.PRESET_FULL_RECT)
+	ctl.mouse_filter = Control.MOUSE_FILTER_PASS
+	ctl.gui_input.connect(_on_build_input)
+	layer.add_child(ctl)
 
 func _build_menu() -> void:
 	_menu = PopupMenu.new()
@@ -110,26 +115,19 @@ func _build_columns() -> void:
 		spr.position = Vector2(i * _tile_px, _baseline)
 		add_child(spr)
 		_sprites.append(spr)
-		var btn := Button.new()
-		btn.flat = true
-		btn.focus_mode = Control.FOCUS_NONE
-		btn.position = Vector2(i * _tile_px, 0)
-		btn.size = Vector2(_tile_px, _baseline)
-		btn.modulate = Color(1, 1, 1, 0)  # invisible click area over the lot
-		btn.pressed.connect(_on_slot_pressed.bind(i))
-		add_child(btn)
-		_buttons.append(btn)
 		_built_state.append(null)
+
+## Re-anchor columns to the bottom when the window resizes (idle <-> expanded).
+func _reflow() -> void:
+	_baseline = get_viewport_rect().size.y
+	refresh()
 
 ## Re-sync every column with the simulation's slots.
 func refresh() -> void:
 	var sim := City.sim
 	for i in _sprites.size():
 		var spr := _sprites[i]
-		var btn := _buttons[i]
 		var unlocked := i < sim.slots.size()
-		btn.disabled = not unlocked
-		btn.visible = unlocked
 		spr.visible = unlocked
 		if not unlocked:
 			_built_state[i] = null
@@ -161,9 +159,18 @@ func _animate_build(spr: Sprite2D) -> void:
 	tween.tween_property(spr, "position:y", _baseline - _tile_px, _GROW_TIME) \
 		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
+func _on_build_input(event: InputEvent) -> void:
+	if not (event is InputEventMouseButton and event.pressed
+			and event.button_index == MOUSE_BUTTON_LEFT):
+		return
+	var slot_index := int(event.position.x / _tile_px)
+	print("[build] click at x=", event.position.x, " -> slot ", slot_index)
+	_on_slot_pressed(slot_index)
+
 func _on_slot_pressed(slot_index: int) -> void:
 	var sim := City.sim
-	if slot_index >= sim.slots.size() or sim.slots[slot_index] != null:
+	if slot_index < 0 or slot_index >= sim.slots.size() or sim.slots[slot_index] != null:
+		print("[build] slot ", slot_index, " not buildable (locked or occupied)")
 		return
 	_pending_slot = slot_index
 	_refresh_menu_locks()
@@ -174,5 +181,6 @@ func _on_slot_pressed(slot_index: int) -> void:
 func _on_menu_id_pressed(id: int) -> void:
 	if _pending_slot < 0:
 		return
-	City.build(id, _pending_slot)  # id is the Zone value; emits city_changed
+	var ok := City.build(id, _pending_slot)  # id is the Zone value
+	print("[build] build zone ", id, " in slot ", _pending_slot, " -> ", ok)
 	_pending_slot = -1
