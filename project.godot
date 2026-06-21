@@ -20,6 +20,7 @@ config/icon="res://icon.svg"
 WindowManager="*res://scripts/window_manager.gd"
 TrayIcon="*res://scripts/tray_icon.gd"
 CityTiles="*res://scripts/city_tiles.gd"
+City="*res://scripts/city.gd"
 
 [display]
 

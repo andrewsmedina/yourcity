@@ -55,6 +55,28 @@ buildable before the `critical-path` window work is finished.
 
 ## Build / test commands
 
-None yet — there is no Godot project. When the Godot 4 project is created, add the
-export/run/test commands here (e.g. `godot --headless` for CI, per-OS export
-presets for the Beta build issues).
+Godot 4.6 project at the repo root (`project.godot`).
+
+- **Import assets** (run after adding/changing assets, and on fresh checkout):
+  `godot --headless --import`
+- **Boot the game headless** (smoke check, prints the boot line then exits):
+  `godot --headless --quit-after 5`
+- **Run the simulation tests:** `godot --headless --script tests/run_tests.gd`
+  — exits non-zero on failure. Add new pure-sim checks to `tests/run_tests.gd`.
+- **Regenerate placeholder art:** `python3 tools/gen_placeholder_spritesheet.py`
+
+Headless has no real display: window docking, the tray/menu-bar icon and the
+rendered skyline/day-night cannot be verified this way — only that code loads and
+runs without errors. Verify those visually by opening the project in the Godot
+editor.
+
+## Code map
+
+- `scripts/sim/` — **pure simulation** (`CitySim`, `class_name`, extends
+  RefCounted). No engine/scene deps; unit-tested directly in `tests/`.
+- `scripts/city.gd` — `City` autoload: ticks the sim and emits signals for the UI.
+- `scripts/window_manager.gd` — `WindowManager` autoload: borderless,
+  always-on-top, per-OS docking, idle/expanded resize.
+- `scripts/tray_icon.gd` — `TrayIcon` autoload: macOS menu-bar / Windows tray.
+- `scripts/city_tiles.gd` — `CityTiles` autoload: slices the spritesheet by name.
+- `scripts/skyline.gd`, `scripts/day_night.gd` — view layer (scene nodes).
