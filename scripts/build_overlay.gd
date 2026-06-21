@@ -29,6 +29,7 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_font = ThemeDB.fallback_font
 	_zone_textures[CitySim.Zone.ROADS] = load("res://assets/tile_street.png")
+	_zone_textures[CitySim.Zone.RESIDENTIAL] = load("res://assets/tile_residential.png")
 	City.city_changed.connect(queue_redraw)
 
 func _process(delta: float) -> void:
