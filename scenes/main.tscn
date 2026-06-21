@@ -1,10 +1,11 @@
-[gd_scene load_steps=6 format=3 uid="uid://b8tcity0main0"]
+[gd_scene load_steps=7 format=3 uid="uid://b8tcity0main0"]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
 [ext_resource type="Script" path="res://scripts/skyline.gd" id="2_skyline"]
 [ext_resource type="Script" path="res://scripts/day_night.gd" id="3_daynight"]
 [ext_resource type="Script" path="res://scripts/hud.gd" id="4_hud"]
 [ext_resource type="Script" path="res://scripts/indicator_bars.gd" id="5_bars"]
+[ext_resource type="Script" path="res://scripts/crisis_ui.gd" id="6_crisis"]
 
 [node name="Main" type="Node2D"]
 script = ExtResource("1_main")
@@ -20,3 +21,6 @@ script = ExtResource("4_hud")
 
 [node name="IndicatorBars" type="Control" parent="HUD"]
 script = ExtResource("5_bars")
+
+[node name="CrisisUI" type="CanvasLayer" parent="."]
+script = ExtResource("6_crisis")
