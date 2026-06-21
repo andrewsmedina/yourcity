@@ -6,7 +6,8 @@ extends Control
 ## it stays crisp regardless of the day/night tint. Clicks are handled in
 ## main._input (GUI hit-testing is unreliable in this macOS borderless window).
 
-const GRID_TOP := 22.0  # leave room for the HUD line at the top
+const GRID_TOP := 22.0   # leave room for the HUD line at the top
+const REF_HEIGHT := 120.0  # grid keeps the idle bar height even when expanded
 
 const ZONE_COLOR := {
 	CitySim.Zone.RESIDENTIAL: Color(0.40, 0.80, 0.50),
@@ -36,10 +37,9 @@ func _input(event: InputEvent) -> void:
 	if not (event is InputEventMouseButton and event.pressed
 			and event.button_index == MOUSE_BUTTON_LEFT):
 		return
-	if not City.sim.active_crises().is_empty():
-		return  # leave clicks for the crisis flow while one is active
-	# Use local mouse position so clicks map to the same space we draw in,
-	# regardless of window scaling on macOS.
+	# Building stays allowed during a crisis — placing the matching service is a
+	# valid way to resolve it. Use local mouse position so clicks map to the same
+	# space we draw in, regardless of window scaling on macOS.
 	var p := get_local_mouse_position()
 	var tile := tile_size()
 	var col := int(p.x / tile)
@@ -51,9 +51,10 @@ func _input(event: InputEvent) -> void:
 		return
 	City.build(City.selected_zone, slot)
 
-## Square tile size that fits GRID_ROWS rows below the HUD line.
+## Square tile size that fits GRID_ROWS rows below the HUD line. Based on the
+## idle bar height so the grid stays put when the window expands during a crisis.
 func tile_size() -> float:
-	return (size.y - GRID_TOP) / CitySim.GRID_ROWS
+	return (REF_HEIGHT - GRID_TOP) / CitySim.GRID_ROWS
 
 func _draw() -> void:
 	var tile := tile_size()
