@@ -22,7 +22,7 @@ func _ready() -> void:
 	_hint.add_theme_color_override("font_color", Color(0.7, 0.9, 1.0))
 	_hint.add_theme_color_override("font_outline_color", Color.BLACK)
 	_hint.add_theme_constant_override("outline_size", 4)
-	_hint.text = "👆 Clique num lote (+) para construir  ·  Enter expande  ·  C força crise"
+	_hint.text = "👈 Clique nos quadrados azuis piscando (à esquerda) para construir  ·  R reinicia  ·  Enter expande"
 	add_child(_hint)
 
 func _process(_delta: float) -> void:
