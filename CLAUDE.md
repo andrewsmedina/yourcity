@@ -1,0 +1,60 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## What this is
+
+TaskbarCity — an idle/city-builder game that runs in a thin window docked to the
+screen edge (taskbar-style). The city runs itself while the player works; the
+player intervenes both proactively (building/upgrading zones) and reactively
+(resolving crises). Target engine is **Godot 4**, shipping for **Windows, Linux
+and macOS**.
+
+**Status: pre-code.** As of this writing the repo contains only the design doc —
+no Godot project exists yet. The Foundation tasks (see Issues) are the first code
+to be written.
+
+## Source of truth
+
+- **`docs/GDD_TaskbarCity.md`** is the canonical design. Read it before making any
+  gameplay/systems decision — it defines the economy, the 5 indicators
+  (Segurança, Educação, Saúde, Tráfego, **Energia**) plus derived Felicidade, the
+  crisis system, the per-OS window strategy, and provisional balancing numbers.
+- Work is tracked in **GitHub Issues** under **milestone `0.1`** (repo
+  `andrewsmedina/yourcity`), one issue per task. The local `.jsx` tracker that
+  used to hold this was removed once issues took over — do not recreate it.
+
+## Issue conventions
+
+Issues carry an area label (`foundation`, `visual`, `economy`, `indicators`,
+`crises`, `ui`, `progression`, `beta`) and may carry a **flow** label:
+
+- **`critical-path`** — blocks other work; do early. Currently the Foundation
+  issues (Godot window docked per-OS). The macOS window is the highest technical
+  risk: there is no taskbar, so it's a borderless window anchored above the Dock
+  plus a menu-bar icon, with Spaces/permissions handled explicitly.
+- **`parallel`** — pure simulation logic (economy, indicators, crises) with no
+  dependency on the window or art; can be built and tested in isolation, in any
+  order.
+
+Priority for now = issue creation order (#1 Foundation → … → Beta), with
+`critical-path`/`parallel` labels as the tie-breaker when ordering conflicts. The
+creation order intentionally front-loads Foundation, but note Visual (#9–12) was
+created before the simulation core (#13–31) even though the simulation is the more
+foundational work — prefer the simulation core over art when choosing what to do
+next.
+
+## Architecture (planned)
+
+Keep the **simulation core decoupled from the view**. The economy, indicators and
+crisis systems are deterministic logic that must run and be testable without any
+window or sprite. The Godot window/UI is a thin presentation layer that reads
+simulation state (money, the 5 indicators, Felicidade) and renders bars, toasts
+and the decision panel. This separation is what makes the `parallel` issues
+buildable before the `critical-path` window work is finished.
+
+## Build / test commands
+
+None yet — there is no Godot project. When the Godot 4 project is created, add the
+export/run/test commands here (e.g. `godot --headless` for CI, per-OS export
+presets for the Beta build issues).
