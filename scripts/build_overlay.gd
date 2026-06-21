@@ -22,11 +22,13 @@ const ZONE_COLOR := {
 
 var _t := 0.0
 var _font: Font
+var _zone_textures := {}
 
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_font = ThemeDB.fallback_font
+	_zone_textures[CitySim.Zone.ROADS] = load("res://assets/tile_street.png")
 	City.city_changed.connect(queue_redraw)
 
 func _process(delta: float) -> void:
@@ -86,6 +88,9 @@ func _draw_empty(rect: Rect2, pulse: float) -> void:
 	draw_line(c - Vector2(0, s), c + Vector2(0, s), Color(1, 1, 1, pulse), 2.0)
 
 func _draw_building(rect: Rect2, zone: int, tile: float) -> void:
+	if _zone_textures.has(zone):
+		draw_texture_rect(_zone_textures[zone], rect, false)
+		return
 	var color: Color = ZONE_COLOR[zone]
 	draw_rect(rect, color, true)
 	draw_rect(rect, color.darkened(0.4), false, 1.5)
