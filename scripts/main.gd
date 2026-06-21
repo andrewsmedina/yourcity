@@ -8,6 +8,13 @@ extends Node2D
 func _ready() -> void:
 	print("TaskbarCity booted — Godot ", Engine.get_version_info().string)
 
+func _input(event: InputEvent) -> void:
+	# Diagnostic: log every click/key that reaches the window, before any UI.
+	if event is InputEventMouseButton and event.pressed:
+		print("[input] mouse click at ", event.position, " button ", event.button_index)
+	elif event is InputEventKey and event.pressed:
+		print("[input] key ", event.keycode)
+
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_accept"):
 		WindowManager.toggle_expanded()
