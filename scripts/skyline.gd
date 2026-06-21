@@ -59,6 +59,14 @@ func _ready() -> void:
 	_build_columns()
 	_build_menu()
 	City.city_changed.connect(refresh)
+	get_viewport().size_changed.connect(_reflow)
+	refresh()
+
+## Re-anchor columns to the bottom when the window resizes (idle <-> expanded).
+func _reflow() -> void:
+	_baseline = get_viewport_rect().size.y
+	for btn in _buttons:
+		btn.size.y = _baseline
 	refresh()
 
 func _build_menu() -> void:
@@ -113,8 +121,9 @@ func refresh() -> void:
 			continue
 		var zone = sim.slots[i]
 		if zone == null:
+			# Empty buildable lot — tint it light blue so it reads as clickable.
 			spr.texture = CityTiles.get_tile("ground")
-			spr.modulate = Color(1, 1, 1, 0.5)
+			spr.modulate = Color(0.7, 0.9, 1.0, 0.65)
 			spr.scale = Vector2(PIXEL_SCALE, PIXEL_SCALE)
 			spr.position = Vector2(i * _tile_px, _baseline - _tile_px)
 			_built_state[i] = null

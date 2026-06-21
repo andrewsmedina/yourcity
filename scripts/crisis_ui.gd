@@ -14,6 +14,7 @@ var _panel: PanelContainer
 var _title: Label
 var _timer_fill: ColorRect
 var _buttons_box: HBoxContainer
+var _sound: AudioStreamPlayer
 var _current = null  # crisis currently shown in the panel, or null
 
 func _ready() -> void:
@@ -47,10 +48,16 @@ func _ready() -> void:
 	_buttons_box = HBoxContainer.new()
 	vb.add_child(_buttons_box)
 
+	_sound = AudioStreamPlayer.new()
+	_sound.stream = load("res://assets/notify.wav")
+	add_child(_sound)
+
 	City.crisis_started.connect(_on_crisis_started)
 
 func _on_crisis_started(crisis) -> void:
 	_flash_toast("⚠ %s!" % CitySim.CRISIS_TITLE[crisis])
+	if not TrayIcon.muted:  # optional soft notification sound (#36, #37)
+		_sound.play()
 
 func _process(_delta: float) -> void:
 	var active := City.sim.active_crises()
