@@ -30,6 +30,7 @@ func _initialize() -> void:
 	_test_cannot_respond_without_money()
 	_test_ignored_crime_reduces_population()
 	_test_blackout_decays_all_indicators()
+	_test_population_capped_by_housing()
 	_test_city_ages_in_years()
 	_test_phase_tracks_population()
 	_test_all_zones_unlocked_from_start()
@@ -215,6 +216,15 @@ func _test_blackout_decays_all_indicators() -> void:
 	var drop := sec_before - sec_after
 	_expect("blackout decays all indicators faster than normal",
 		drop > CitySim.BASE_DECAY + 0.0001)
+
+func _test_population_capped_by_housing() -> void:
+	var c := CitySim.new(10000.0)
+	c.build(CitySim.Zone.RESIDENTIAL, 0)  # capacity = 1 * RESIDENTIAL_CAPACITY
+	c.population = 99999.0  # way over capacity
+	c.advance(1.0)
+	_expect("population is capped at housing capacity",
+		is_equal_approx(c.population, CitySim.RESIDENTIAL_CAPACITY)
+		and is_equal_approx(c.housing_capacity(), CitySim.RESIDENTIAL_CAPACITY))
 
 func _test_city_ages_in_years() -> void:
 	var c := CitySim.new()

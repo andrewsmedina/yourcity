@@ -71,7 +71,8 @@ const SERVICE_FOR := {
 # --- Economy (provisional — see GDD balancing) ---
 const COMMERCIAL_REVENUE := 2.0
 const INDUSTRIAL_REVENUE := 1.5
-const RESIDENTIAL_POP := 1.0 / 3.0  # +1 resident every 3s
+const RESIDENTIAL_POP := 1.0 / 3.0  # growth rate: +1 resident every 3s
+const RESIDENTIAL_CAPACITY := 250.0  # max residents each residential lot holds
 
 const ZONE_COST := {
 	Zone.RESIDENTIAL: 500.0, Zone.COMMERCIAL: 800.0, Zone.INDUSTRIAL: 1000.0,
@@ -233,6 +234,10 @@ func zone_count(zone: Zone) -> int:
 			n += 1
 	return n
 
+## Maximum residents the city can house (sum of residential lot capacities).
+func housing_capacity() -> float:
+	return zone_count(Zone.RESIDENTIAL) * RESIDENTIAL_CAPACITY
+
 ## Average of the five indicators (#20).
 func happiness() -> float:
 	var total := 0.0
@@ -255,7 +260,8 @@ func month() -> int:
 func advance(delta: float) -> void:
 	elapsed += delta
 	money += (revenue_per_sec * _revenue_factor() - upkeep_per_sec) * delta
-	population = maxf(0.0, population + pop_per_sec * _pop_factor() * delta)
+	# Population grows toward housing capacity (and leaves when unhappy).
+	population = clampf(population + pop_per_sec * _pop_factor() * delta, 0.0, housing_capacity())
 	for ind in INDICATORS:
 		indicators[ind] = clampf(indicators[ind] + _indicator_rate(ind) * delta, 0.0, 100.0)
 	_update_crises(delta)
