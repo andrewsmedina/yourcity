@@ -22,14 +22,15 @@ func _ready() -> void:
 	_hint.add_theme_color_override("font_color", Color(0.7, 0.9, 1.0))
 	_hint.add_theme_color_override("font_outline_color", Color.BLACK)
 	_hint.add_theme_constant_override("outline_size", 4)
-	_hint.text = "👈 Clique nos quadrados azuis piscando (à esquerda) para construir  ·  R reinicia  ·  Enter expande"
+	_hint.text = "Teclas 1-8 escolhem a zona  ·  clique num quadrado azul para construir  ·  R reinicia"
 	add_child(_hint)
 
 func _process(_delta: float) -> void:
 	var s := City.sim
-	_label.text = "%s   $%d   pop %d   fel %d   =  $%+.1f/s" % [
+	_label.text = "%s   $%d   pop %d   fel %d   =  $%+.1f/s    🔨 %s" % [
 		CitySim.PHASE_NAME[s.phase()],
 		int(s.money), int(s.population), int(s.happiness()), s.net_per_sec(),
+		CitySim.ZONE_NAME[City.selected_zone],
 	]
 	# Hint stays until the player builds their first zone; hidden during a crisis
 	# so it doesn't overlap the decision panel.

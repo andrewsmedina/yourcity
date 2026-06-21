@@ -18,6 +18,17 @@ enum Zone {
 	POLICE, SCHOOL, HOSPITAL, ROADS, POWER,
 }
 
+const ZONE_NAME := {
+	Zone.RESIDENTIAL: "Residencial",
+	Zone.COMMERCIAL: "Comercial",
+	Zone.INDUSTRIAL: "Industrial",
+	Zone.POLICE: "Delegacia",
+	Zone.SCHOOL: "Escola",
+	Zone.HOSPITAL: "Hospital",
+	Zone.ROADS: "Vias",
+	Zone.POWER: "Usina",
+}
+
 enum Indicator { SECURITY, EDUCATION, HEALTH, TRAFFIC, ENERGY }
 
 enum Phase { VILLAGE, SMALL_TOWN, CITY, METROPOLIS }

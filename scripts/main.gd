@@ -1,40 +1,49 @@
 extends Node2D
 
-## Entry point for TaskbarCity. Confirms the project boots and provides debug
-## shortcuts. Build handling lives here (in _input, which reliably fires) while
-## we sort out macOS input/scaling.
-##   left click on a lot — build Residential (diagnostic; menu returns later)
+## Entry point for TaskbarCity. Owns input (which reliably fires on macOS, unlike
+## GUI hit-testing in this borderless window):
+##   1-8        — select the zone to build
+##   left click — build the selected zone on the lot under the cursor (#16)
 ##   Enter/Space — toggle the expanded window height (#8)
-##   C           — tank Security to force a Crime crisis (#26-#31)
+##   C           — force a Crime crisis (debug)
+##   R           — reset to a fresh city (debug / recovery)
 
 const _TILE_PX := 48  # CityTiles.TILE(16) * skyline PIXEL_SCALE(3)
 
+const _ZONE_KEYS := {
+	KEY_1: CitySim.Zone.RESIDENTIAL,
+	KEY_2: CitySim.Zone.COMMERCIAL,
+	KEY_3: CitySim.Zone.INDUSTRIAL,
+	KEY_4: CitySim.Zone.POLICE,
+	KEY_5: CitySim.Zone.SCHOOL,
+	KEY_6: CitySim.Zone.HOSPITAL,
+	KEY_7: CitySim.Zone.ROADS,
+	KEY_8: CitySim.Zone.POWER,
+}
+
 func _ready() -> void:
 	print("TaskbarCity booted — Godot ", Engine.get_version_info().string)
-	var w := get_window()
-	print("[geom] window.size=", w.size, " viewport=", get_viewport_rect().size,
-		" content_scale=", w.content_scale_factor)
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		var slot := int(event.position.x / _TILE_PX)
-		print("[click] ", event.position, " -> slot ", slot)
-		_try_build(slot)
+		_build_at(event.position.x)
 	elif event is InputEventKey and event.pressed:
-		if event.keycode == KEY_ENTER or event.keycode == KEY_SPACE:
-			WindowManager.toggle_expanded()
-		elif event.keycode == KEY_C:
-			City.sim.indicators[CitySim.Indicator.SECURITY] = 10.0
-		elif event.keycode == KEY_R:
-			City.reset()
-			print("[reset] fresh city: money=", City.sim.money)
+		_handle_key(event.keycode)
 
-func _try_build(slot: int) -> void:
-	if slot < 0 or slot >= City.sim.slots.size():
-		print("[build] slot ", slot, " out of range (", City.sim.slots.size(), " slots)")
+func _build_at(x: float) -> void:
+	if not City.sim.active_crises().is_empty():
+		return  # leave clicks for the crisis flow while one is active
+	var slot := int(x / _TILE_PX)
+	if slot < 0 or slot >= City.sim.slots.size() or City.sim.slots[slot] != null:
 		return
-	if City.sim.slots[slot] != null:
-		print("[build] slot ", slot, " already occupied")
-		return
-	var ok := City.build(CitySim.Zone.RESIDENTIAL, slot)
-	print("[build] residential slot ", slot, " -> ", ok, "  money=", City.sim.money)
+	City.build(City.selected_zone, slot)
+
+func _handle_key(keycode: int) -> void:
+	if _ZONE_KEYS.has(keycode):
+		City.selected_zone = _ZONE_KEYS[keycode]
+	elif keycode == KEY_ENTER or keycode == KEY_SPACE:
+		WindowManager.toggle_expanded()
+	elif keycode == KEY_C:
+		City.sim.indicators[CitySim.Indicator.SECURITY] = 10.0
+	elif keycode == KEY_R:
+		City.reset()

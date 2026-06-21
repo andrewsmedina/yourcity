@@ -11,6 +11,7 @@ signal crisis_started(crisis: CitySim.CrisisType)
 signal crisis_ended(crisis: CitySim.CrisisType)
 
 var sim := CitySim.new()
+var selected_zone: CitySim.Zone = CitySim.Zone.RESIDENTIAL  ## zone the next build places
 
 const SAVE_PATH := "user://taskbarcity_save.json"
 const AUTOSAVE_EVERY := 10.0
