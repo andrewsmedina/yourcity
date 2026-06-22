@@ -18,7 +18,7 @@ func _initialize() -> void:
 	_test_grid_starts_full()
 	_test_indicators_start_at_default()
 	_test_happiness_is_average_of_indicators()
-	_test_indicators_decay_passively()
+	_test_indicators_react_to_demand()
 	_test_service_boosts_its_indicator()
 	_test_energy_drains_faster_with_more_zones()
 	_test_high_happiness_boosts_population()
@@ -115,22 +115,27 @@ func _test_happiness_is_average_of_indicators() -> void:
 	var expected := (100.0 + 0.0 + start + start + start) / 5.0
 	_expect("happiness is the average of indicators", is_equal_approx(c.happiness(), expected))
 
-func _test_indicators_decay_passively() -> void:
-	var c := CitySim.new()
-	c.advance(10.0)
-	_expect("indicators decay passively",
-		is_equal_approx(c.indicators[CitySim.Indicator.SECURITY],
-			CitySim.INDICATOR_START - CitySim.BASE_DECAY * 10.0))
+func _test_indicators_react_to_demand() -> void:
+	var empty := CitySim.new(100000.0)
+	empty.advance(5.0)
+	var stable := is_equal_approx(empty.indicators[CitySim.Indicator.SECURITY], CitySim.INDICATOR_START)
+	var c := CitySim.new(100000.0)
+	for i in 5:
+		c.build(CitySim.Zone.COMMERCIAL, i)  # demand, but no police
+	c.advance(1.0)
+	var sec: float = c.indicators[CitySim.Indicator.SECURITY]
+	var fell := sec < CitySim.INDICATOR_START
+	_expect("indicators stable when empty, fall under demand", stable and fell)
 
 func _test_service_boosts_its_indicator() -> void:
 	var c := CitySim.new(10000.0)
 	c.population = 500.0  # unlock POLICE (Small Town)
 	c.build(CitySim.Zone.POLICE, 0)
 	c.advance(1.0)
-	# +SERVICE_BOOST from police, -BASE_DECAY passive.
+	# +SERVICE_BOOST supply, minus the demand of the one building (the police).
 	_expect("a service boosts its indicator",
 		is_equal_approx(c.indicators[CitySim.Indicator.SECURITY],
-			CitySim.INDICATOR_START + CitySim.SERVICE_BOOST - CitySim.BASE_DECAY))
+			CitySim.INDICATOR_START + CitySim.SERVICE_BOOST - CitySim.DEMAND_PER_BUILDING))
 
 func _test_energy_drains_faster_with_more_zones() -> void:
 	var quiet := CitySim.new(10000.0)
@@ -214,8 +219,8 @@ func _test_blackout_decays_all_indicators() -> void:
 	c.advance(1.0)  # active blackout drags every indicator down extra
 	var sec_after: float = c.indicators[CitySim.Indicator.SECURITY]
 	var drop := sec_before - sec_after
-	_expect("blackout decays all indicators faster than normal",
-		drop > CitySim.BASE_DECAY + 0.0001)
+	# With no buildings there's no demand, so any drop comes from the blackout.
+	_expect("blackout decays all indicators", drop > 0.05)
 
 func _test_population_capped_by_housing() -> void:
 	var c := CitySim.new(10000.0)
