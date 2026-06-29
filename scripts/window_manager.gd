@@ -19,14 +19,39 @@ const HEIGHT_EXPANDED := 524
 var _expanded := false
 
 func _ready() -> void:
-	var window := get_window()
-	window.borderless = true
-	window.always_on_top = true
-	redock()
+	apply_mode()
 
-## Pin the window full-width to the bottom edge of the screen it is on,
-## at the current idle/expanded height.
+## Apply the current window mode: normal movable window (default) or the docked
+## always-on-top taskbar bar.
+func apply_mode() -> void:
+	var window := get_window()
+	if Settings.taskbar_mode:
+		window.borderless = true
+		window.always_on_top = true
+		redock()
+	else:
+		window.borderless = false
+		window.always_on_top = false
+		_center_normal_window()
+
+## Toggle between normal and taskbar modes (T key) and remember the choice.
+func toggle_mode() -> void:
+	Settings.taskbar_mode = not Settings.taskbar_mode
+	Settings.save_settings()
+	apply_mode()
+
+func _center_normal_window() -> void:
+	var window := get_window()
+	var rect := DisplayServer.screen_get_usable_rect(window.current_screen)
+	if rect.size.x <= 0:
+		return
+	window.size = Vector2i(mini(rect.size.x - 80, 2800), HEIGHT_IDLE)
+	window.position = rect.position + (rect.size - window.size) / 2
+
+## Pin the window full-width to the bottom edge (taskbar mode only).
 func redock() -> void:
+	if not Settings.taskbar_mode:
+		return
 	var window := get_window()
 	var rect := DisplayServer.screen_get_usable_rect(window.current_screen)
 	if rect.size.x <= 0:
@@ -36,8 +61,8 @@ func redock() -> void:
 	window.position = Vector2i(rect.position.x, rect.end.y - height)
 
 func set_expanded(expanded: bool) -> void:
-	if expanded == _expanded:
-		return
+	if expanded == _expanded or not Settings.taskbar_mode:
+		return  # only the docked taskbar resizes
 	_expanded = expanded
 	redock()
 

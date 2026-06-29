@@ -10,6 +10,7 @@ const MIN := 0.7
 const MAX := 3.0
 
 var ui_scale := 2.3  # default already enlarged (~10 "+" presses)
+var taskbar_mode := false  # false = normal window (default); true = docked taskbar
 
 func _ready() -> void:
 	load_settings()
@@ -22,7 +23,7 @@ func bump(delta: float) -> void:
 func save_settings() -> void:
 	var f := FileAccess.open(PATH, FileAccess.WRITE)
 	if f:
-		f.store_string(JSON.stringify({"ui_scale": ui_scale}))
+		f.store_string(JSON.stringify({"ui_scale": ui_scale, "taskbar_mode": taskbar_mode}))
 		f.close()
 
 func load_settings() -> void:
@@ -33,5 +34,9 @@ func load_settings() -> void:
 		return
 	var data = JSON.parse_string(f.get_as_text())
 	f.close()
-	if typeof(data) == TYPE_DICTIONARY and data.has("ui_scale"):
+	if typeof(data) != TYPE_DICTIONARY:
+		return
+	if data.has("ui_scale"):
 		ui_scale = clampf(float(data["ui_scale"]), MIN, MAX)
+	if data.has("taskbar_mode"):
+		taskbar_mode = bool(data["taskbar_mode"])
