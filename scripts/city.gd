@@ -13,6 +13,7 @@ signal year_passed(year: int, tax: float, upkeep: float)
 
 var sim := CitySim.new()
 var selected_zone: CitySim.Zone = CitySim.Zone.RESIDENTIAL  ## zone the next build places
+var paused := false  ## when true the simulation is frozen (building still works)
 
 const SAVE_PATH := "user://taskbarcity_save.json"
 const AUTOSAVE_EVERY := 10.0
@@ -24,6 +25,8 @@ func _ready() -> void:
 	load_game()
 
 func _process(delta: float) -> void:
+	if paused:
+		return  # simulation frozen; building/demolish still work via input
 	_autosave_accum += delta
 	if _autosave_accum >= AUTOSAVE_EVERY:
 		_autosave_accum = 0.0
