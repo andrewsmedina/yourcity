@@ -128,9 +128,9 @@ const INDICATOR_START := 60.0  # a fresh city starts stable
 const SERVICE_BOOST := 0.5             # indicator supply per matching service
 # Residents that one people-service covers (demand per resident = BOOST / this).
 const RESIDENTS_PER_SERVICE := {
-	Indicator.SECURITY: 500.0,
-	Indicator.EDUCATION: 300.0,
-	Indicator.HEALTH: 1000.0,
+	Indicator.SECURITY: 1750.0,
+	Indicator.EDUCATION: 1500.0,
+	Indicator.HEALTH: 2500.0,
 }
 const DEMAND_PER_BUILDING := 0.03      # traffic demand per built lot (~1 Vias / 16)
 const ENERGY_DEMAND_PER_BUILDING := 0.01  # energy demand per built lot (~1 Usina / 50)
