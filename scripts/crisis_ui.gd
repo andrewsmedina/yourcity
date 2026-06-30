@@ -63,12 +63,16 @@ func _process(_delta: float) -> void:
 		_panel.visible = false
 		return
 	var crisis = active[0]
-	var fix: int = CitySim.SERVICE_FOR[CitySim.CRISIS_INDICATOR[crisis]]
+	var ind: int = CitySim.CRISIS_INDICATOR[crisis]
+	var fix: int = CitySim.SERVICE_FOR[ind]
 	var key := fix + 1  # zone enum order matches keys 1-8
 	var extra := active.size() - 1
+	var value := int(City.sim.indicators[ind])
+	var rate: float = City.sim.indicator_rate(ind)
+	var trend := "↑ recuperando" if rate > 0.0 else "↓ piorando — construa mais"
 	_title.add_theme_font_size_override("font_size", int(18 * Settings.ui_scale))
-	_title.text = "🚨 %s — construa %s (tecla %d)%s" % [
-		CitySim.CRISIS_TITLE[crisis], CitySim.ZONE_NAME[fix], key,
+	_title.text = "🚨 %s — %d %s — construa %s (tecla %d)%s" % [
+		CitySim.CRISIS_TITLE[crisis], value, trend, CitySim.ZONE_NAME[fix], key,
 		"   (+%d em fila)" % extra if extra > 0 else "",
 	]
 	_timer_fill.size.x = _TIMER_W * clampf(

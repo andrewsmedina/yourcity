@@ -294,7 +294,7 @@ func advance(delta: float) -> void:
 	# Population grows toward housing capacity (and leaves when unhappy).
 	population = clampf(population + pop_per_sec * _pop_factor() * delta, 0.0, housing_capacity())
 	for ind in INDICATORS:
-		indicators[ind] = clampf(indicators[ind] + _indicator_rate(ind) * delta, 0.0, 100.0)
+		indicators[ind] = clampf(indicators[ind] + indicator_rate(ind) * delta, 0.0, 100.0)
 	_update_crises(delta)
 	money = maxf(0.0, money)  # no bottomless debt — keeps the city recoverable
 	_sync_slots()
@@ -415,7 +415,9 @@ func _recompute_rates() -> void:
 			upkeep += ZONE_UPKEEP[s]
 	upkeep_per_sec = upkeep
 
-func _indicator_rate(ind: Indicator) -> float:
+## Net rate of change for an indicator (supply from services minus city demand).
+## Positive = recovering, negative = falling.
+func indicator_rate(ind: Indicator) -> float:
 	# Supply from the matching service vs demand that scales with city size.
 	var supply := zone_count(SERVICE_FOR[ind]) * SERVICE_BOOST
 	var demand := building_count() * DEMAND_PER_BUILDING
