@@ -12,6 +12,17 @@ const TILE := 48.0       # fixed lot size; the window height grows with row coun
 const PALETTE_ROW := 32.0
 const PALETTE_FS := 18
 
+const ZONE_EMOJI := {
+	CitySim.Zone.RESIDENTIAL: "🏠",
+	CitySim.Zone.COMMERCIAL: "🏬",
+	CitySim.Zone.INDUSTRIAL: "🏭",
+	CitySim.Zone.POLICE: "🚓",
+	CitySim.Zone.SCHOOL: "🏫",
+	CitySim.Zone.HOSPITAL: "🏥",
+	CitySim.Zone.ROADS: "🛣️",
+	CitySim.Zone.POWER: "⚡",
+}
+
 const ZONE_COLOR := {
 	CitySim.Zone.RESIDENTIAL: Color(0.40, 0.80, 0.50),
 	CitySim.Zone.COMMERCIAL: Color(0.95, 0.80, 0.30),
@@ -25,12 +36,16 @@ const ZONE_COLOR := {
 
 var _t := 0.0
 var _font: Font
+var _emoji_font: SystemFont
 var _zone_textures := {}
 
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_font = ThemeDB.fallback_font
+	_emoji_font = SystemFont.new()  # OS color-emoji font
+	_emoji_font.font_names = PackedStringArray(
+		["Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji"])
 	_zone_textures[CitySim.Zone.ROADS] = load("res://assets/tile_street.png")
 	_zone_textures[CitySim.Zone.RESIDENTIAL] = load("res://assets/tile_residential.png")
 	_zone_textures[CitySim.Zone.HOSPITAL] = load("res://assets/tile_hospital.png")
@@ -123,6 +138,8 @@ func _draw_palette() -> void:
 			draw_texture_rect(_zone_textures[z], sw, false)
 		else:
 			draw_rect(sw, ZONE_COLOR[z], true)
+			draw_string(_emoji_font, Vector2(sw.position.x, sw.get_center().y + sw.size.y * 0.35),
+				ZONE_EMOJI[z], HORIZONTAL_ALIGNMENT_CENTER, sw.size.x, int(sw.size.y * 0.8))
 		draw_string(_font, Vector2(sw.end.x + 10.0, r.get_center().y + PALETTE_FS * 0.35),
 			"%d  %s" % [z + 1, CitySim.ZONE_NAME[z]],
 			HORIZONTAL_ALIGNMENT_LEFT, r.size.x, PALETTE_FS, Color.WHITE)
@@ -179,7 +196,7 @@ func _draw_building(rect: Rect2, zone: int, tile: float) -> void:
 	var color: Color = ZONE_COLOR[zone]
 	draw_rect(rect, color, true)
 	draw_rect(rect, color.darkened(0.4), false, 1.5)
-	var letter: String = CitySim.ZONE_NAME[zone].substr(0, 1)
-	var font_size := maxi(8, int(tile * 0.6))
-	draw_string(_font, Vector2(rect.position.x, rect.get_center().y + font_size * 0.35),
-		letter, HORIZONTAL_ALIGNMENT_CENTER, rect.size.x, font_size, Color(0.1, 0.1, 0.1))
+	var emoji: String = ZONE_EMOJI[zone]
+	var font_size := maxi(8, int(tile * 0.7))
+	draw_string(_emoji_font, Vector2(rect.position.x, rect.get_center().y + font_size * 0.35),
+		emoji, HORIZONTAL_ALIGNMENT_CENTER, rect.size.x, font_size)
