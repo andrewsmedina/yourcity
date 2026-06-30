@@ -37,6 +37,10 @@ func _handle_key(keycode: int) -> void:
 		Settings.bump(-0.1)  # - diminui a fonte/UI
 	elif keycode == KEY_C:
 		City.sim.indicators[CitySim.Indicator.SECURITY] = 10.0
+	elif keycode == KEY_BRACKETLEFT:
+		City.sim.adjust_tax(-CitySim.TAX_STEP)  # [ baixa o imposto
+	elif keycode == KEY_BRACKETRIGHT:
+		City.sim.adjust_tax(CitySim.TAX_STEP)   # ] aumenta o imposto
 	elif keycode == KEY_T:
 		WindowManager.toggle_mode()  # alterna janela normal <-> taskbar
 	elif keycode == KEY_R:

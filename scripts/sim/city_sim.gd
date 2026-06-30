@@ -68,22 +68,33 @@ const SERVICE_FOR := {
 	Indicator.ENERGY: Zone.POWER,
 }
 
-# --- Economy (provisional — see GDD balancing) ---
-const COMMERCIAL_REVENUE := 2.0
-const INDUSTRIAL_REVENUE := 1.5
-const RESIDENTIAL_POP := 1.0 / 3.0  # growth rate: +1 resident every 3s
+# --- Economy (SimCity-style: cheap zones, costly infra, tax revenue) ---
+const RESIDENTIAL_POP := 1.0 / 3.0   # growth rate: +1 resident every 3s
 const RESIDENTIAL_CAPACITY := 250.0  # max residents each residential lot holds
 
+# Cheap zones, expensive services/power (mirrors the SimCity SNES price scale).
 const ZONE_COST := {
-	Zone.RESIDENTIAL: 500.0, Zone.COMMERCIAL: 800.0, Zone.INDUSTRIAL: 1000.0,
-	Zone.POLICE: 1500.0, Zone.SCHOOL: 1500.0, Zone.HOSPITAL: 1500.0,
-	Zone.ROADS: 1200.0, Zone.POWER: 1800.0,
+	Zone.RESIDENTIAL: 100.0, Zone.COMMERCIAL: 100.0, Zone.INDUSTRIAL: 100.0,
+	Zone.ROADS: 100.0,
+	Zone.POLICE: 500.0, Zone.SCHOOL: 500.0, Zone.HOSPITAL: 500.0,
+	Zone.POWER: 3000.0,
 }
-const ZONE_UPKEEP := {  # cost per second (salaries/maintenance)
-	Zone.RESIDENTIAL: 0.33, Zone.COMMERCIAL: 0.67, Zone.INDUSTRIAL: 1.33,
-	Zone.POLICE: 2.67, Zone.SCHOOL: 2.67, Zone.HOSPITAL: 2.67,
-	Zone.ROADS: 2.0, Zone.POWER: 3.33,
+const ZONE_UPKEEP := {  # ongoing cost/sec — services & infra; plain zones are free
+	Zone.RESIDENTIAL: 0.0, Zone.COMMERCIAL: 0.0, Zone.INDUSTRIAL: 0.0,
+	Zone.ROADS: 0.5,
+	Zone.POLICE: 1.0, Zone.SCHOOL: 1.0, Zone.HOSPITAL: 1.0,
+	Zone.POWER: 2.0,
 }
+
+# Tax is the main revenue: rate x (residents + businesses). High tax earns more
+# but lowers happiness; low tax raises it (the SimCity trade-off).
+const TAX_PER_RESIDENT := 0.1
+const TAX_PER_BUSINESS := 5.0
+const TAX_MIN := 0.0
+const TAX_MAX := 0.20
+const TAX_STEP := 0.01
+const TAX_COMFORT := 0.07
+const TAX_HAPPINESS := 150.0  # happiness shift per 100% tax away from comfort
 const MONTH := 10.0  # seconds per in-game month (calendar only)
 const YEAR := MONTH * 12.0  # 120s per in-game year
 
@@ -176,7 +187,7 @@ const CRISIS_RESPONSES := {
 var money: float
 var population: float
 var elapsed: float  # seconds the city has been running, for its age/calendar
-var revenue_per_sec: float
+var tax_rate := 0.07
 var upkeep_per_sec: float
 var pop_per_sec: float
 var indicators := {}  # Indicator -> float (0..100)
@@ -185,7 +196,7 @@ var slots: Array = []  # each entry is a Zone value, or null when empty
 
 var _crisis_elapsed := {}  # CrisisType -> seconds active (key present iff active)
 
-func _init(starting_money: float = 50000.0) -> void:
+func _init(starting_money: float = 20000.0) -> void:
 	money = starting_money
 	population = 0.0
 	elapsed = 0.0
@@ -247,15 +258,26 @@ func building_count() -> int:
 func housing_capacity() -> float:
 	return zone_count(Zone.RESIDENTIAL) * RESIDENTIAL_CAPACITY
 
-## Average of the five indicators (#20).
+## Average of the five indicators, shifted by how the tax rate sits relative to
+## the comfortable level (#20).
 func happiness() -> float:
 	var total := 0.0
 	for ind in INDICATORS:
 		total += indicators[ind]
-	return total / INDICATORS.size()
+	var base := total / INDICATORS.size()
+	return clampf(base + (TAX_COMFORT - tax_rate) * TAX_HAPPINESS, 0.0, 100.0)
+
+## Tax revenue per second at the current rate (residents + businesses).
+func tax_income() -> float:
+	var businesses := zone_count(Zone.COMMERCIAL) + zone_count(Zone.INDUSTRIAL)
+	return (population * TAX_PER_RESIDENT + businesses * TAX_PER_BUSINESS) * tax_rate
 
 func net_per_sec() -> float:
-	return revenue_per_sec * _revenue_factor() - upkeep_per_sec
+	return tax_income() - upkeep_per_sec
+
+## Nudge the tax rate (clamped); the player controls this.
+func adjust_tax(delta: float) -> void:
+	tax_rate = clampf(tax_rate + delta, TAX_MIN, TAX_MAX)
 
 ## City age in whole years (starts at Year 1).
 func year() -> int:
@@ -268,7 +290,7 @@ func month() -> int:
 ## Advance the simulation by `delta` seconds.
 func advance(delta: float) -> void:
 	elapsed += delta
-	money += (revenue_per_sec * _revenue_factor() - upkeep_per_sec) * delta
+	money += net_per_sec() * delta
 	# Population grows toward housing capacity (and leaves when unhappy).
 	population = clampf(population + pop_per_sec * _pop_factor() * delta, 0.0, housing_capacity())
 	for ind in INDICATORS:
@@ -352,6 +374,7 @@ func to_dict() -> Dictionary:
 		"money": money,
 		"population": population,
 		"elapsed": elapsed,
+		"tax_rate": tax_rate,
 		"slots": slots.duplicate(),
 		"indicators": inds,
 		"crises": crises,
@@ -361,6 +384,7 @@ func from_dict(data: Dictionary) -> void:
 	money = float(data.get("money", money))
 	population = float(data.get("population", population))
 	elapsed = float(data.get("elapsed", elapsed))
+	tax_rate = clampf(float(data.get("tax_rate", tax_rate)), TAX_MIN, TAX_MAX)
 	var saved_slots = data.get("slots", null)
 	if saved_slots != null:
 		slots = []
@@ -384,8 +408,6 @@ func _sync_slots() -> void:
 		slots.append(null)
 
 func _recompute_rates() -> void:
-	revenue_per_sec = zone_count(Zone.COMMERCIAL) * COMMERCIAL_REVENUE \
-		+ zone_count(Zone.INDUSTRIAL) * INDUSTRIAL_REVENUE
 	pop_per_sec = zone_count(Zone.RESIDENTIAL) * RESIDENTIAL_POP
 	var upkeep := 0.0
 	for s in slots:
@@ -400,14 +422,6 @@ func _indicator_rate(ind: Indicator) -> float:
 	if ind == Indicator.HEALTH:
 		demand += zone_count(Zone.INDUSTRIAL) * INDUSTRY_HEALTH_PENALTY
 	return supply - demand
-
-func _revenue_factor() -> float:
-	var h := happiness()
-	if h >= HAPPY_HIGH:
-		return 1.2
-	if h < HAPPY_LOW:
-		return 0.7
-	return 1.0
 
 func _pop_factor() -> float:
 	var h := happiness()

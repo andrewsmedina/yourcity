@@ -11,7 +11,8 @@ func _initialize() -> void:
 	_test_cannot_build_on_occupied_slot()
 	_test_cannot_build_without_money()
 	_test_cannot_build_locked_slot()
-	_test_commercial_zone_generates_revenue()
+	_test_tax_income_from_residents_and_business()
+	_test_tax_rate_shifts_happiness()
 	_test_residential_zone_grows_population()
 	_test_upkeep_charged_monthly()
 	_test_net_drives_money()
@@ -67,12 +68,22 @@ func _test_cannot_build_locked_slot() -> void:
 	var ok := c.build(CitySim.Zone.COMMERCIAL, locked)
 	_expect("cannot build on a locked slot", not ok)
 
-func _test_commercial_zone_generates_revenue() -> void:
+func _test_tax_income_from_residents_and_business() -> void:
 	var c := CitySim.new(10000.0)
 	c.build(CitySim.Zone.COMMERCIAL, 0)
-	c.build(CitySim.Zone.COMMERCIAL, 1)
-	_expect("commercial zones set revenue",
-		is_equal_approx(c.revenue_per_sec, 2.0 * CitySim.COMMERCIAL_REVENUE))
+	c.population = 100.0
+	var expected := (100.0 * CitySim.TAX_PER_RESIDENT + 1.0 * CitySim.TAX_PER_BUSINESS) * c.tax_rate
+	_expect("tax income from residents and businesses", is_equal_approx(c.tax_income(), expected))
+
+func _test_tax_rate_shifts_happiness() -> void:
+	var c := CitySim.new()
+	var at_comfort := c.happiness()  # tax starts at comfort
+	c.tax_rate = CitySim.TAX_COMFORT + 0.10
+	var high := c.happiness()
+	c.tax_rate = 0.0
+	var low := c.happiness()
+	_expect("high tax lowers happiness, low tax raises it",
+		high < at_comfort and low > at_comfort)
 
 func _test_residential_zone_grows_population() -> void:
 	var c := CitySim.new(10000.0)
@@ -265,6 +276,7 @@ func _test_save_load_round_trip() -> void:
 	a.build(CitySim.Zone.COMMERCIAL, 0)
 	a.build(CitySim.Zone.INDUSTRIAL, 1)
 	a.indicators[CitySim.Indicator.SECURITY] = 42.0
+	a.tax_rate = 0.12
 	var b := CitySim.new()
 	b.from_dict(a.to_dict())
 	_expect("save/load round-trips the city",
@@ -273,7 +285,7 @@ func _test_save_load_round_trip() -> void:
 		and b.slots[0] == CitySim.Zone.COMMERCIAL
 		and b.slots[1] == CitySim.Zone.INDUSTRIAL
 		and is_equal_approx(b.indicators[CitySim.Indicator.SECURITY], 42.0)
-		and is_equal_approx(b.revenue_per_sec, a.revenue_per_sec))
+		and is_equal_approx(b.tax_rate, 0.12))
 
 func _expect(label: String, ok: bool) -> void:
 	print(("PASS " if ok else "FAIL ") + label)
