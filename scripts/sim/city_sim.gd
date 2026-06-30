@@ -90,8 +90,8 @@ const YEAR := MONTH * 12.0  # 120s per in-game year
 # Build grid: 30 columns x 3 rows. Starts with one row unlocked; the rest open
 # up as population grows.
 const GRID_COLS := 45
-const GRID_ROWS := 6
-const MAX_SLOTS := GRID_COLS * GRID_ROWS  # 270
+const GRID_ROWS := 15
+const MAX_SLOTS := GRID_COLS * GRID_ROWS  # 675
 const BASE_SLOTS := MAX_SLOTS  # whole grid buildable from the start
 const POP_PER_SLOT := 50.0
 

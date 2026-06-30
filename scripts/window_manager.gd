@@ -13,12 +13,14 @@ extends Node
 ## panels/struts, so pinning to the usable rect's bottom edge Just Works on all
 ## three. (The macOS menu-bar status icon lives in issue #7.)
 
-const HEIGHT_IDLE := 344  # GRID_TOP(56) + GRID_ROWS(6) * TILE(48)
-const HEIGHT_EXPANDED := 524
+const HEIGHT_IDLE := 800  # GRID_TOP(80) + GRID_ROWS(15) * TILE(48)
+const HEIGHT_EXPANDED := 980
+const MIN_SIZE := Vector2i(1280, 800)
 
 var _expanded := false
 
 func _ready() -> void:
+	get_window().min_size = MIN_SIZE
 	apply_mode()
 
 ## Apply the current window mode: normal movable window (default) or the docked

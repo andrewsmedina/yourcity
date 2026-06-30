@@ -6,7 +6,7 @@ extends Control
 ## it stays crisp regardless of the day/night tint. Clicks are handled in
 ## main._input (GUI hit-testing is unreliable in this macOS borderless window).
 
-const GRID_TOP := 56.0  # push the grid below the (large) HUD line
+const GRID_TOP := 80.0  # top margin: room for the HUD + a gap before the lots
 const TILE := 48.0      # fixed lot size; the window height grows with row count
 
 const ZONE_COLOR := {
