@@ -18,6 +18,7 @@ func _initialize() -> void:
 	_test_tax_collected_yearly_not_continuously()
 	_test_grid_starts_full()
 	_test_demolish_clears_lot()
+	_test_gifts_awarded_by_population()
 	_test_indicators_start_at_default()
 	_test_happiness_is_average_of_indicators()
 	_test_indicators_react_to_demand()
@@ -111,6 +112,20 @@ func _test_tax_collected_yearly_not_continuously() -> void:
 	c.advance(2.0)  # crosses the year boundary — lump-sum settlement
 	var collected := c.money > start
 	_expect("tax is collected yearly, not continuously", mid_unchanged and collected)
+
+func _test_gifts_awarded_by_population() -> void:
+	var c := CitySim.new(100000.0)
+	c.build(CitySim.Zone.RESIDENTIAL, 0)
+	c.build(CitySim.Zone.RESIDENTIAL, 1)  # capacity 500
+	c.population = 500.0
+	c.advance(0.1)
+	var got_park := c.has_gift(CitySim.Gift.PARK)
+	var no_bank := not c.has_gift(CitySim.Gift.BANK)  # needs 2000
+	var base_tax := c.tax_income()
+	c.gifts_received[CitySim.Gift.BANK] = true  # bank boosts tax income
+	var boosted := c.tax_income() > base_tax
+	_expect("gifts award by population and the bank boosts tax",
+		got_park and no_bank and boosted)
 
 func _test_demolish_clears_lot() -> void:
 	var c := CitySim.new(10000.0)

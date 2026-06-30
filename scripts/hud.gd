@@ -22,7 +22,19 @@ func _ready() -> void:
 	add_child(_sound)
 	Settings.changed.connect(_apply_scale)
 	City.year_passed.connect(_on_year_passed)
+	City.gift_received.connect(_on_gift_received)
 	_apply_scale()
+
+func _on_gift_received(gift: int) -> void:
+	var gift_name: String = CitySim.GIFT_NAME[gift]
+	_report.text = "🎁 Presente: %s!" % gift_name
+	_report.modulate.a = 1.0
+	if not TrayIcon.muted:
+		_sound.play()
+	TrayIcon.notify("TaskbarCity — Presente!", "Você recebeu: %s" % gift_name)
+	var tween := create_tween()
+	tween.tween_interval(4.0)
+	tween.tween_property(_report, "modulate:a", 0.0, 0.8)
 
 func _apply_scale() -> void:
 	var fs := int(22 * Settings.ui_scale)
@@ -43,10 +55,15 @@ func _make_label(pos: Vector2) -> Label:
 func _process(_delta: float) -> void:
 	var s := City.sim
 	var pause := "⏸ PAUSADO (P)   " if City.paused else ""
-	_label.text = pause + "🗓 Ano %d Mês %d   %s   $%d   👥 %d/%d   😊 %d   🏛 %d%% [/]   🔨 %s    " % [
+	var gifts := ""
+	for g in s.gifts_received:
+		gifts += " " + CitySim.GIFT_NAME[g]
+	if gifts != "":
+		gifts = "   🎁" + gifts
+	_label.text = pause + "🗓 Ano %d Mês %d   %s   $%d   👥 %d/%d   😊 %d   🏛 %d%% [/]   🔨 %s%s    " % [
 		s.year(), s.month(), CitySim.PHASE_NAME[s.phase()],
 		int(s.money), int(s.population), int(s.housing_capacity()), int(s.happiness()),
-		int(s.tax_rate * 100.0), CitySim.ZONE_NAME[City.selected_zone],
+		int(s.tax_rate * 100.0), CitySim.ZONE_NAME[City.selected_zone], gifts,
 	]
 	# Tax is collected yearly, so show the projected balance for the year.
 	var per_year := s.net_per_sec() * CitySim.YEAR

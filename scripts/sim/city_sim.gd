@@ -47,6 +47,14 @@ const PHASE_POP := {
 	Phase.METROPOLIS: 50000.0,
 }
 
+# Gifts awarded at population milestones (#endgame). Each grants a passive bonus.
+enum Gift { PARK, BANK, STADIUM }
+const GIFTS := [Gift.PARK, Gift.BANK, Gift.STADIUM]
+const GIFT_NAME := { Gift.PARK: "Parque", Gift.BANK: "Banco", Gift.STADIUM: "Estádio" }
+const GIFT_POP := { Gift.PARK: 500.0, Gift.BANK: 2000.0, Gift.STADIUM: 5000.0 }
+const GIFT_HAPPINESS := { Gift.PARK: 5.0, Gift.BANK: 0.0, Gift.STADIUM: 10.0 }
+const BANK_TAX_BONUS := 0.25  # +25% tax income while the Bank is owned
+
 enum CrisisType { CRIME, EPIDEMIC, DROPOUT, GRIDLOCK, BLACKOUT }
 
 const CRISIS_TYPES := [
@@ -208,6 +216,7 @@ var last_year_tax := 0.0
 var last_year_upkeep := 0.0
 
 var slots: Array = []  # each entry is a Zone value, or null when empty
+var gifts_received := {}  # Gift -> true once its milestone is reached
 
 var _crisis_elapsed := {}  # CrisisType -> seconds active (key present iff active)
 
@@ -291,12 +300,24 @@ func happiness() -> float:
 	for ind in INDICATORS:
 		total += indicators[ind]
 	var base := total / INDICATORS.size()
-	return clampf(base + (TAX_COMFORT - tax_rate) * TAX_HAPPINESS, 0.0, 100.0)
+	return clampf(base + (TAX_COMFORT - tax_rate) * TAX_HAPPINESS + _gift_happiness(), 0.0, 100.0)
+
+func has_gift(gift: Gift) -> bool:
+	return gifts_received.has(gift)
+
+func _gift_happiness() -> float:
+	var bonus := 0.0
+	for g in gifts_received:
+		bonus += GIFT_HAPPINESS[g]
+	return bonus
 
 ## Tax revenue per second at the current rate (residents + businesses).
 func tax_income() -> float:
 	var businesses := zone_count(Zone.COMMERCIAL) + zone_count(Zone.INDUSTRIAL)
-	return (population * TAX_PER_RESIDENT + businesses * TAX_PER_BUSINESS) * tax_rate
+	var income := (population * TAX_PER_RESIDENT + businesses * TAX_PER_BUSINESS) * tax_rate
+	if has_gift(Gift.BANK):
+		income *= 1.0 + BANK_TAX_BONUS
+	return income
 
 func net_per_sec() -> float:
 	return tax_income() - upkeep_per_sec
@@ -327,8 +348,14 @@ func advance(delta: float) -> void:
 	for ind in INDICATORS:
 		indicators[ind] = clampf(indicators[ind] + indicator_rate(ind) * delta, 0.0, 100.0)
 	_update_crises(delta)  # crises spend money immediately, not via the budget
+	_check_gifts()
 	money = maxf(0.0, money)  # no bottomless debt — keeps the city recoverable
 	_sync_slots()
+
+func _check_gifts() -> void:
+	for gift in GIFTS:
+		if not gifts_received.has(gift) and population >= GIFT_POP[gift]:
+			gifts_received[gift] = true
 
 func _settle_year() -> void:
 	last_year_tax = _year_tax
@@ -418,6 +445,7 @@ func to_dict() -> Dictionary:
 		"slots": slots.duplicate(),
 		"indicators": inds,
 		"crises": crises,
+		"gifts": gifts_received.keys(),
 	}
 
 func from_dict(data: Dictionary) -> void:
@@ -440,6 +468,9 @@ func from_dict(data: Dictionary) -> void:
 	_crisis_elapsed = {}
 	for key in data.get("crises", {}):
 		_crisis_elapsed[int(key)] = float(data["crises"][key])
+	gifts_received = {}
+	for g in data.get("gifts", []):
+		gifts_received[int(g)] = true
 	_last_year = year()
 	_sync_slots()
 	_recompute_rates()

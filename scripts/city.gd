@@ -10,6 +10,7 @@ signal city_changed  ## zones built or slots unlocked — the view should refres
 signal crisis_started(crisis: CitySim.CrisisType)
 signal crisis_ended(crisis: CitySim.CrisisType)
 signal year_passed(year: int, tax: float, upkeep: float)
+signal gift_received(gift: CitySim.Gift)
 
 var sim := CitySim.new()
 var selected_zone: CitySim.Zone = CitySim.Zone.RESIDENTIAL  ## zone the next build places
@@ -19,10 +20,13 @@ const SAVE_PATH := "user://taskbarcity_save.json"
 const AUTOSAVE_EVERY := 10.0
 
 var _active := {}  # mirror of active crises, for edge detection
+var _known_gifts := {}  # mirror of received gifts, for edge detection
 var _autosave_accum := 0.0
 
 func _ready() -> void:
 	load_game()
+	for g in sim.gifts_received:  # don't re-announce gifts already in the save
+		_known_gifts[g] = true
 
 func _process(delta: float) -> void:
 	if paused:
@@ -38,6 +42,10 @@ func _process(delta: float) -> void:
 	sim.advance(delta)
 	if sim.year() != prev_year:
 		year_passed.emit(sim.year(), sim.last_year_tax, sim.last_year_upkeep)
+	for g in sim.gifts_received:
+		if not _known_gifts.has(g):
+			_known_gifts[g] = true
+			gift_received.emit(g)
 	if not is_equal_approx(prev_money, sim.money):
 		money_changed.emit(sim.money)
 	if not is_equal_approx(prev_pop, sim.population):
@@ -50,6 +58,7 @@ func _process(delta: float) -> void:
 func reset() -> void:
 	sim = CitySim.new()
 	_active = {}
+	_known_gifts = {}
 	save_game()
 	money_changed.emit(sim.money)
 	population_changed.emit(sim.population)
