@@ -63,6 +63,18 @@ func _on_year_passed(year: int, tax: float, upkeep: float) -> void:
 	_report.modulate.a = 1.0
 	if not TrayIcon.muted:
 		_sound.play()
+	_os_notify("TaskbarCity — Ano %d" % (year - 1),
+		"Balanço: +$%d impostos − $%d manutenção = $%+d" % [int(tax), int(upkeep), int(net)])
+
+## Fire a native OS notification (macOS Notification Center via osascript).
+func _os_notify(title: String, body: String) -> void:
+	if OS.get_name() != "macOS":
+		return
+	var safe_body := body.replace('"', "'")
+	var safe_title := title.replace('"', "'")
+	OS.create_process("osascript", [
+		"-e", 'display notification "%s" with title "%s"' % [safe_body, safe_title],
+	])
 	var tween := create_tween()
 	tween.tween_interval(4.0)
 	tween.tween_property(_report, "modulate:a", 0.0, 0.8)
