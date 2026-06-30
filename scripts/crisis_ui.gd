@@ -56,6 +56,9 @@ func _on_crisis_started(crisis) -> void:
 	_flash_toast("⚠ %s!" % CitySim.CRISIS_TITLE[crisis])
 	if not TrayIcon.muted:
 		_sound.play()
+	var fix: int = CitySim.SERVICE_FOR[CitySim.CRISIS_INDICATOR[crisis]]
+	TrayIcon.notify("TaskbarCity — %s" % CitySim.CRISIS_TITLE[crisis],
+		"Construa %s para conter" % CitySim.ZONE_NAME[fix])
 
 func _process(_delta: float) -> void:
 	var active := City.sim.active_crises()

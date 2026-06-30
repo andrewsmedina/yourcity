@@ -38,6 +38,15 @@ func _ready() -> void:
 	blink.timeout.connect(_on_blink_tick)
 	add_child(blink)
 
+## Fire a native OS notification (macOS Notification Center), unless muted.
+func notify(title: String, body: String) -> void:
+	if muted or OS.get_name() != "macOS":
+		return
+	OS.create_process("osascript", [
+		"-e", 'display notification "%s" with title "%s"' % [
+			body.replace('"', "'"), title.replace('"', "'")],
+	])
+
 func _refresh_blink(_crisis = null) -> void:
 	# When no crisis remains, restore the normal icon immediately.
 	if _indicator_id != -1 and City.sim.active_crises().is_empty():
