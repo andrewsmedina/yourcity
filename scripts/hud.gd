@@ -8,6 +8,7 @@ extends CanvasLayer
 var _label: Label
 var _net: Label
 var _report: Label
+var _sound: AudioStreamPlayer
 
 func _ready() -> void:
 	_label = _make_label(Vector2(12, 3))
@@ -16,6 +17,9 @@ func _ready() -> void:
 	_report = _make_label(Vector2(340, 92))  # in the play area, below the top bar
 	_report.add_theme_color_override("font_color", Color(0.7, 0.95, 1.0))
 	_report.modulate.a = 0.0
+	_sound = AudioStreamPlayer.new()
+	_sound.stream = load("res://assets/notify.wav")
+	add_child(_sound)
 	Settings.changed.connect(_apply_scale)
 	City.year_passed.connect(_on_year_passed)
 	_apply_scale()
@@ -55,6 +59,8 @@ func _on_year_passed(year: int, tax: float, upkeep: float) -> void:
 	_report.text = "📊 Ano %d: +$%d impostos − $%d manutenção = $%+d" % [
 		year - 1, int(tax), int(upkeep), int(net)]
 	_report.modulate.a = 1.0
+	if not TrayIcon.muted:
+		_sound.play()
 	var tween := create_tween()
-	tween.tween_interval(3.0)
+	tween.tween_interval(4.0)
 	tween.tween_property(_report, "modulate:a", 0.0, 0.8)
