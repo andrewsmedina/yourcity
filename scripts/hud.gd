@@ -56,6 +56,8 @@ func _process(_delta: float) -> void:
 
 func _on_year_passed(year: int, tax: float, upkeep: float) -> void:
 	var net := tax - upkeep
+	print("[year] Ano ", year - 1, ": +$", int(tax), " impostos -$", int(upkeep),
+		" manutenção = $", int(net))
 	_report.text = "📊 Ano %d: +$%d impostos − $%d manutenção = $%+d" % [
 		year - 1, int(tax), int(upkeep), int(net)]
 	_report.modulate.a = 1.0

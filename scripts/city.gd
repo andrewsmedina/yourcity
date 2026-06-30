@@ -60,6 +60,15 @@ func build(zone: CitySim.Zone, slot_index: int) -> bool:
 	city_changed.emit()
 	return true
 
+## Debug: jump a full year forward, firing the year-end flow immediately.
+func debug_advance_year() -> void:
+	var prev_year := sim.year()
+	sim.advance(CitySim.YEAR)
+	if sim.year() != prev_year:
+		year_passed.emit(sim.year(), sim.last_year_tax, sim.last_year_upkeep)
+	money_changed.emit(sim.money)
+	city_changed.emit()
+
 ## Demolish whatever is on a slot; emits updates and returns success.
 func demolish(slot_index: int) -> bool:
 	if not sim.demolish(slot_index):

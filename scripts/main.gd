@@ -43,5 +43,7 @@ func _handle_key(keycode: int) -> void:
 		City.sim.adjust_tax(CitySim.TAX_STEP)   # ] aumenta o imposto
 	elif keycode == KEY_T:
 		WindowManager.toggle_mode()  # alterna janela normal <-> taskbar
+	elif keycode == KEY_Y:
+		City.debug_advance_year()  # debug: força virar o ano
 	elif keycode == KEY_R:
 		City.reset()
