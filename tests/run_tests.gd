@@ -15,7 +15,7 @@ func _initialize() -> void:
 	_test_tax_rate_shifts_happiness()
 	_test_residential_zone_grows_population()
 	_test_upkeep_charged_monthly()
-	_test_net_drives_money()
+	_test_tax_collected_yearly_not_continuously()
 	_test_grid_starts_full()
 	_test_demolish_clears_lot()
 	_test_indicators_start_at_default()
@@ -100,13 +100,17 @@ func _test_upkeep_charged_monthly() -> void:
 	_expect("upkeep is the per-second cost",
 		is_equal_approx(c.upkeep_per_sec, CitySim.ZONE_UPKEEP[CitySim.Zone.POLICE]))
 
-func _test_net_drives_money() -> void:
+func _test_tax_collected_yearly_not_continuously() -> void:
 	var c := CitySim.new(10000.0)
-	c.build(CitySim.Zone.COMMERCIAL, 0)
+	c.build(CitySim.Zone.RESIDENTIAL, 0)
+	c.build(CitySim.Zone.COMMERCIAL, 1)
+	c.population = 250.0
 	var start := c.money
-	c.advance(1.0)
-	_expect("money moves by net per second",
-		is_equal_approx(c.money, start + c.net_per_sec()))
+	c.advance(CitySim.YEAR - 1.0)  # almost a year — nothing collected yet
+	var mid_unchanged := is_equal_approx(c.money, start)
+	c.advance(2.0)  # crosses the year boundary — lump-sum settlement
+	var collected := c.money > start
+	_expect("tax is collected yearly, not continuously", mid_unchanged and collected)
 
 func _test_demolish_clears_lot() -> void:
 	var c := CitySim.new(10000.0)

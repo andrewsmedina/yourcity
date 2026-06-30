@@ -194,6 +194,14 @@ var upkeep_per_sec: float
 var pop_per_sec: float
 var indicators := {}  # Indicator -> float (0..100)
 
+# Annual budget: tax and upkeep accrue during the year and are settled in one
+# lump sum when the year turns over (last_year_* hold the most recent report).
+var _year_tax := 0.0
+var _year_upkeep := 0.0
+var _last_year := 1
+var last_year_tax := 0.0
+var last_year_upkeep := 0.0
+
 var slots: Array = []  # each entry is a Zone value, or null when empty
 
 var _crisis_elapsed := {}  # CrisisType -> seconds active (key present iff active)
@@ -202,6 +210,7 @@ func _init(starting_money: float = 20000.0) -> void:
 	money = starting_money
 	population = 0.0
 	elapsed = 0.0
+	_last_year = 1
 	for ind in INDICATORS:
 		indicators[ind] = INDICATOR_START
 	_sync_slots()
@@ -302,14 +311,26 @@ func month() -> int:
 ## Advance the simulation by `delta` seconds.
 func advance(delta: float) -> void:
 	elapsed += delta
-	money += net_per_sec() * delta
+	# Tax and upkeep accrue through the year; settled as a lump sum at year-end.
+	_year_tax += tax_income() * delta
+	_year_upkeep += upkeep_per_sec * delta
+	if year() != _last_year:
+		_last_year = year()
+		_settle_year()
 	# Population grows toward housing capacity (and leaves when unhappy).
 	population = clampf(population + pop_per_sec * _pop_factor() * delta, 0.0, housing_capacity())
 	for ind in INDICATORS:
 		indicators[ind] = clampf(indicators[ind] + indicator_rate(ind) * delta, 0.0, 100.0)
-	_update_crises(delta)
+	_update_crises(delta)  # crises spend money immediately, not via the budget
 	money = maxf(0.0, money)  # no bottomless debt — keeps the city recoverable
 	_sync_slots()
+
+func _settle_year() -> void:
+	last_year_tax = _year_tax
+	last_year_upkeep = _year_upkeep
+	money += _year_tax - _year_upkeep
+	_year_tax = 0.0
+	_year_upkeep = 0.0
 
 # --- Crises ---
 
@@ -387,6 +408,8 @@ func to_dict() -> Dictionary:
 		"population": population,
 		"elapsed": elapsed,
 		"tax_rate": tax_rate,
+		"year_tax": _year_tax,
+		"year_upkeep": _year_upkeep,
 		"slots": slots.duplicate(),
 		"indicators": inds,
 		"crises": crises,
@@ -397,6 +420,8 @@ func from_dict(data: Dictionary) -> void:
 	population = float(data.get("population", population))
 	elapsed = float(data.get("elapsed", elapsed))
 	tax_rate = clampf(float(data.get("tax_rate", tax_rate)), TAX_MIN, TAX_MAX)
+	_year_tax = float(data.get("year_tax", 0.0))
+	_year_upkeep = float(data.get("year_upkeep", 0.0))
 	var saved_slots = data.get("slots", null)
 	if saved_slots != null:
 		slots = []
@@ -410,6 +435,7 @@ func from_dict(data: Dictionary) -> void:
 	_crisis_elapsed = {}
 	for key in data.get("crises", {}):
 		_crisis_elapsed[int(key)] = float(data["crises"][key])
+	_last_year = year()
 	_sync_slots()
 	_recompute_rates()
 

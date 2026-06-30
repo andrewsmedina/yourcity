@@ -9,6 +9,7 @@ signal population_changed(population: float)
 signal city_changed  ## zones built or slots unlocked — the view should refresh
 signal crisis_started(crisis: CitySim.CrisisType)
 signal crisis_ended(crisis: CitySim.CrisisType)
+signal year_passed(year: int, tax: float, upkeep: float)
 
 var sim := CitySim.new()
 var selected_zone: CitySim.Zone = CitySim.Zone.RESIDENTIAL  ## zone the next build places
@@ -30,7 +31,10 @@ func _process(delta: float) -> void:
 	var prev_money := sim.money
 	var prev_pop := sim.population
 	var prev_slots := sim.slots.size()
+	var prev_year := sim.year()
 	sim.advance(delta)
+	if sim.year() != prev_year:
+		year_passed.emit(sim.year(), sim.last_year_tax, sim.last_year_upkeep)
 	if not is_equal_approx(prev_money, sim.money):
 		money_changed.emit(sim.money)
 	if not is_equal_approx(prev_pop, sim.population):
