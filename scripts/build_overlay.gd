@@ -9,7 +9,7 @@ extends Control
 const GRID_TOP := 80.0   # top bar (HUD) — not buildable
 const GRID_LEFT := 300.0  # left sidebar (indicators) — not buildable; sync with IndicatorBars
 const TILE := 48.0       # fixed lot size; the window height grows with row count
-const PALETTE_ROW := 38.0
+const PALETTE_ROW := 32.0
 const PALETTE_FS := 18
 
 const ZONE_COLOR := {
@@ -46,7 +46,13 @@ func _input(event: InputEvent) -> void:
 	# Local mouse position so clicks map to the space we draw in (macOS scaling).
 	var p := get_local_mouse_position()
 	if event.button_index == MOUSE_BUTTON_LEFT:
-		if p.x < GRID_LEFT:  # sidebar: maybe a build-palette item
+		if p.x < GRID_LEFT:  # sidebar: tax buttons or a build-palette item
+			if _tax_minus_rect().has_point(p):
+				City.sim.adjust_tax(-CitySim.TAX_STEP)
+				return
+			if _tax_plus_rect().has_point(p):
+				City.sim.adjust_tax(CitySim.TAX_STEP)
+				return
 			for z in 8:
 				if _palette_item_rect(z).has_point(p):
 					City.selected_zone = z
@@ -82,6 +88,7 @@ func _draw() -> void:
 		return  # not sized yet
 	_draw_chrome()
 	_draw_palette()
+	_draw_tax()
 	var sim := City.sim
 	var pulse := 0.55 + 0.35 * sin(_t * 4.0)
 	for i in CitySim.MAX_SLOTS:
@@ -119,6 +126,31 @@ func _draw_palette() -> void:
 		draw_string(_font, Vector2(sw.end.x + 10.0, r.get_center().y + PALETTE_FS * 0.35),
 			"%d  %s" % [z + 1, CitySim.ZONE_NAME[z]],
 			HORIZONTAL_ALIGNMENT_LEFT, r.size.x, PALETTE_FS, Color.WHITE)
+
+# Tax control (- rate +) below the palette in the sidebar.
+func _tax_row_y() -> float:
+	return _palette_top() + 8.0 * PALETTE_ROW + 22.0
+
+func _tax_minus_rect() -> Rect2:
+	return Rect2(12.0, _tax_row_y(), 44.0, 32.0)
+
+func _tax_plus_rect() -> Rect2:
+	return Rect2(64.0, _tax_row_y(), 44.0, 32.0)
+
+func _draw_tax() -> void:
+	draw_string(_font, Vector2(12.0, _tax_row_y() - 8.0),
+		"IMPOSTO  %d%%" % int(City.sim.tax_rate * 100.0),
+		HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(0.85, 0.9, 1.0))
+	var m := _tax_minus_rect()
+	draw_rect(m, Color(0.4, 0.25, 0.25, 0.9), true)
+	draw_rect(m, Color(0.85, 0.6, 0.6), false, 2.0)
+	draw_string(_font, Vector2(m.position.x, m.get_center().y + 8.0), "−",
+		HORIZONTAL_ALIGNMENT_CENTER, m.size.x, 24, Color.WHITE)
+	var pl := _tax_plus_rect()
+	draw_rect(pl, Color(0.25, 0.4, 0.25, 0.9), true)
+	draw_rect(pl, Color(0.6, 0.85, 0.6), false, 2.0)
+	draw_string(_font, Vector2(pl.position.x, pl.get_center().y + 8.0), "+",
+		HORIZONTAL_ALIGNMENT_CENTER, pl.size.x, 24, Color.WHITE)
 
 # Dark panels for the non-buildable top bar and left sidebar.
 func _draw_chrome() -> void:
