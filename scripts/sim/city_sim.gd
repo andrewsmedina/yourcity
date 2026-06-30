@@ -121,11 +121,12 @@ const ZONE_UNLOCK_PHASE := {
 
 # --- Indicators ---
 const INDICATOR_START := 60.0  # a fresh city starts stable
-# Indicators follow supply vs demand (no decay by time): demand grows with the
-# number of buildings, supply comes from the matching service. With these
-# values one service covers ~16 buildings.
+# Indicators follow supply vs demand (no decay by time): supply comes from the
+# matching service; demand for people-services (security/education/health) grows
+# with POPULATION, while traffic/energy demand grows with the building count.
 const SERVICE_BOOST := 0.5             # indicator supply per matching service
-const DEMAND_PER_BUILDING := 0.03      # indicator demand per built lot
+const DEMAND_PER_RESIDENT := 0.0005    # people-service demand per resident (~1 service / 1000 pop)
+const DEMAND_PER_BUILDING := 0.03      # traffic/energy demand per built lot (~1 service / 16)
 const INDUSTRY_HEALTH_PENALTY := 0.1   # extra health demand per industrial zone
 
 # --- Happiness thresholds ---
@@ -418,11 +419,16 @@ func _recompute_rates() -> void:
 ## Net rate of change for an indicator (supply from services minus city demand).
 ## Positive = recovering, negative = falling.
 func indicator_rate(ind: Indicator) -> float:
-	# Supply from the matching service vs demand that scales with city size.
 	var supply := zone_count(SERVICE_FOR[ind]) * SERVICE_BOOST
-	var demand := building_count() * DEMAND_PER_BUILDING
-	if ind == Indicator.HEALTH:
-		demand += zone_count(Zone.INDUSTRIAL) * INDUSTRY_HEALTH_PENALTY
+	var demand := 0.0
+	match ind:
+		Indicator.SECURITY, Indicator.EDUCATION:
+			demand = population * DEMAND_PER_RESIDENT
+		Indicator.HEALTH:
+			demand = population * DEMAND_PER_RESIDENT \
+				+ zone_count(Zone.INDUSTRIAL) * INDUSTRY_HEALTH_PENALTY
+		Indicator.TRAFFIC, Indicator.ENERGY:
+			demand = building_count() * DEMAND_PER_BUILDING
 	return supply - demand
 
 func _pop_factor() -> float:

@@ -131,22 +131,19 @@ func _test_indicators_react_to_demand() -> void:
 	empty.advance(5.0)
 	var stable := is_equal_approx(empty.indicators[CitySim.Indicator.SECURITY], CitySim.INDICATOR_START)
 	var c := CitySim.new(100000.0)
-	for i in 5:
-		c.build(CitySim.Zone.COMMERCIAL, i)  # demand, but no police
-	c.advance(1.0)
-	var sec: float = c.indicators[CitySim.Indicator.SECURITY]
-	var fell := sec < CitySim.INDICATOR_START
-	_expect("indicators stable when empty, fall under demand", stable and fell)
+	c.population = 2000.0  # people, but no police
+	var fell := c.indicator_rate(CitySim.Indicator.SECURITY) < 0.0
+	_expect("security stable when empty, falls under population demand", stable and fell)
 
 func _test_service_boosts_its_indicator() -> void:
 	var c := CitySim.new(10000.0)
 	c.population = 500.0  # unlock POLICE (Small Town)
 	c.build(CitySim.Zone.POLICE, 0)
 	c.advance(1.0)
-	# +SERVICE_BOOST supply, minus the demand of the one building (the police).
+	# With no population there's no security demand, so it rises by SERVICE_BOOST.
 	_expect("a service boosts its indicator",
 		is_equal_approx(c.indicators[CitySim.Indicator.SECURITY],
-			CitySim.INDICATOR_START + CitySim.SERVICE_BOOST - CitySim.DEMAND_PER_BUILDING))
+			CitySim.INDICATOR_START + CitySim.SERVICE_BOOST))
 
 func _test_energy_drains_faster_with_more_zones() -> void:
 	var quiet := CitySim.new(10000.0)
