@@ -126,7 +126,12 @@ const INDICATOR_START := 60.0  # a fresh city starts stable
 # matching service; demand for people-services (security/education/health) grows
 # with POPULATION, while traffic/energy demand grows with the building count.
 const SERVICE_BOOST := 0.5             # indicator supply per matching service
-const DEMAND_PER_RESIDENT := 0.0005    # people-service demand per resident (~1 service / 1000 pop)
+# Residents that one people-service covers (demand per resident = BOOST / this).
+const RESIDENTS_PER_SERVICE := {
+	Indicator.SECURITY: 500.0,
+	Indicator.EDUCATION: 300.0,
+	Indicator.HEALTH: 1000.0,
+}
 const DEMAND_PER_BUILDING := 0.03      # traffic demand per built lot (~1 Vias / 16)
 const ENERGY_DEMAND_PER_BUILDING := 0.01  # energy demand per built lot (~1 Usina / 50)
 
@@ -460,7 +465,7 @@ func indicator_rate(ind: Indicator) -> float:
 	var demand := 0.0
 	match ind:
 		Indicator.SECURITY, Indicator.EDUCATION, Indicator.HEALTH:
-			demand = population * DEMAND_PER_RESIDENT
+			demand = population * SERVICE_BOOST / RESIDENTS_PER_SERVICE[ind]
 		Indicator.TRAFFIC:
 			demand = building_count() * DEMAND_PER_BUILDING
 		Indicator.ENERGY:
