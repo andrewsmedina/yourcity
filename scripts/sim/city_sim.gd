@@ -128,7 +128,6 @@ const INDICATOR_START := 60.0  # a fresh city starts stable
 const SERVICE_BOOST := 0.5             # indicator supply per matching service
 const DEMAND_PER_RESIDENT := 0.0005    # people-service demand per resident (~1 service / 1000 pop)
 const DEMAND_PER_BUILDING := 0.03      # traffic/energy demand per built lot (~1 service / 16)
-const INDUSTRY_HEALTH_PENALTY := 0.1   # extra health demand per industrial zone
 
 # --- Happiness thresholds ---
 const HAPPY_HIGH := 70.0
@@ -459,11 +458,8 @@ func indicator_rate(ind: Indicator) -> float:
 	var supply := zone_count(SERVICE_FOR[ind]) * SERVICE_BOOST
 	var demand := 0.0
 	match ind:
-		Indicator.SECURITY, Indicator.EDUCATION:
+		Indicator.SECURITY, Indicator.EDUCATION, Indicator.HEALTH:
 			demand = population * DEMAND_PER_RESIDENT
-		Indicator.HEALTH:
-			demand = population * DEMAND_PER_RESIDENT \
-				+ zone_count(Zone.INDUSTRIAL) * INDUSTRY_HEALTH_PENALTY
 		Indicator.TRAFFIC, Indicator.ENERGY:
 			demand = building_count() * DEMAND_PER_BUILDING
 	return supply - demand
