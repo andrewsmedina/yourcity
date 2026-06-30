@@ -95,6 +95,7 @@ const TAX_MAX := 0.20
 const TAX_STEP := 0.01
 const TAX_COMFORT := 0.07
 const TAX_HAPPINESS := 150.0  # happiness shift per 100% tax away from comfort
+const DEMOLISH_COST := 10.0   # bulldozer cost per lot
 const MONTH := 10.0  # seconds per in-game month (calendar only)
 const YEAR := MONTH * 12.0  # 120s per in-game year
 
@@ -240,10 +241,12 @@ func build(zone: Zone, slot_index: int) -> bool:
 	_recompute_rates()
 	return true
 
-## Remove whatever is on a lot (the bulldozer). Returns false if it was empty.
+## Remove whatever is on a lot (the bulldozer); costs DEMOLISH_COST. Returns
+## false if the lot was empty.
 func demolish(slot_index: int) -> bool:
 	if slot_index < 0 or slot_index >= slots.size() or slots[slot_index] == null:
 		return false
+	money = maxf(0.0, money - DEMOLISH_COST)
 	slots[slot_index] = null
 	_recompute_rates()
 	return true

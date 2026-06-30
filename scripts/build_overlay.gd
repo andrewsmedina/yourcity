@@ -103,7 +103,7 @@ func _palette_item_rect(i: int) -> Rect2:
 	return Rect2(8.0, _palette_top() + i * PALETTE_ROW, GRID_LEFT - 16.0, PALETTE_ROW - 4.0)
 
 func _draw_palette() -> void:
-	draw_string(_font, Vector2(12.0, _palette_top() - 8.0), "CONSTRUIR (1-8) · dir = remover",
+	draw_string(_font, Vector2(12.0, _palette_top() - 8.0), "CONSTRUIR (1-8) · dir = remover ($10)",
 		HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(0.8, 0.85, 0.95))
 	for z in 8:
 		var r := _palette_item_rect(z)

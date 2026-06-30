@@ -111,10 +111,12 @@ func _test_net_drives_money() -> void:
 func _test_demolish_clears_lot() -> void:
 	var c := CitySim.new(10000.0)
 	c.build(CitySim.Zone.COMMERCIAL, 0)
+	var before := c.money
 	var ok := c.demolish(0)
 	var empty_again := c.demolish(0)  # already empty -> no-op
-	_expect("demolish clears the lot, no-op when empty",
-		ok and c.slots[0] == null and not empty_again)
+	_expect("demolish clears the lot and costs, no-op when empty",
+		ok and c.slots[0] == null and not empty_again
+		and is_equal_approx(c.money, before - CitySim.DEMOLISH_COST))
 
 func _test_grid_starts_full() -> void:
 	var c := CitySim.new(10000.0)
