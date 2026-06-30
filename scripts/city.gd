@@ -56,6 +56,13 @@ func build(zone: CitySim.Zone, slot_index: int) -> bool:
 	city_changed.emit()
 	return true
 
+## Demolish whatever is on a slot; emits updates and returns success.
+func demolish(slot_index: int) -> bool:
+	if not sim.demolish(slot_index):
+		return false
+	city_changed.emit()
+	return true
+
 ## Pay for and apply a crisis response; emits updates and returns success.
 func respond(crisis: CitySim.CrisisType, response_index: int) -> bool:
 	if not sim.respond(crisis, response_index):

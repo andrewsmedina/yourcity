@@ -240,6 +240,14 @@ func build(zone: Zone, slot_index: int) -> bool:
 	_recompute_rates()
 	return true
 
+## Remove whatever is on a lot (the bulldozer). Returns false if it was empty.
+func demolish(slot_index: int) -> bool:
+	if slot_index < 0 or slot_index >= slots.size() or slots[slot_index] == null:
+		return false
+	slots[slot_index] = null
+	_recompute_rates()
+	return true
+
 func zone_count(zone: Zone) -> int:
 	var n := 0
 	for s in slots:

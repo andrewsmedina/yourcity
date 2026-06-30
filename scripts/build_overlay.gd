@@ -41,31 +41,36 @@ func _process(delta: float) -> void:
 	queue_redraw()
 
 func _input(event: InputEvent) -> void:
-	if not (event is InputEventMouseButton and event.pressed
-			and event.button_index == MOUSE_BUTTON_LEFT):
+	if not (event is InputEventMouseButton and event.pressed):
 		return
-	# Building stays allowed during a crisis — placing the matching service is a
-	# valid way to resolve it. Use local mouse position so clicks map to the same
-	# space we draw in, regardless of window scaling on macOS.
+	# Local mouse position so clicks map to the space we draw in (macOS scaling).
 	var p := get_local_mouse_position()
-	if p.x < GRID_LEFT:
-		# Click in the sidebar: maybe a build-palette item.
-		for z in 8:
-			if _palette_item_rect(z).has_point(p):
-				City.selected_zone = z
-				return
-		return
-	if p.y < GRID_TOP:
-		return  # click landed in the top bar — not buildable
+	if event.button_index == MOUSE_BUTTON_LEFT:
+		if p.x < GRID_LEFT:  # sidebar: maybe a build-palette item
+			for z in 8:
+				if _palette_item_rect(z).has_point(p):
+					City.selected_zone = z
+					return
+			return
+		var slot := _slot_at(p)
+		if slot >= 0 and City.sim.slots[slot] == null:
+			City.build(City.selected_zone, slot)
+	elif event.button_index == MOUSE_BUTTON_RIGHT:
+		var slot := _slot_at(p)  # right-click bulldozes a built lot
+		if slot >= 0 and City.sim.slots[slot] != null:
+			City.demolish(slot)
+
+## The slot index under a local point, or -1 if it's outside the build grid.
+func _slot_at(p: Vector2) -> int:
+	if p.x < GRID_LEFT or p.y < GRID_TOP:
+		return -1
 	var tile := tile_size()
 	var col := int((p.x - GRID_LEFT) / tile)
 	var row := int((p.y - GRID_TOP) / tile)
 	if col < 0 or col >= CitySim.GRID_COLS or row < 0 or row >= CitySim.GRID_ROWS:
-		return
+		return -1
 	var slot := row * CitySim.GRID_COLS + col
-	if slot >= City.sim.slots.size() or City.sim.slots[slot] != null:
-		return
-	City.build(City.selected_zone, slot)
+	return slot if slot < City.sim.slots.size() else -1
 
 ## Fixed square lot size (the window is tall enough to hold all the rows).
 func tile_size() -> float:
@@ -98,7 +103,7 @@ func _palette_item_rect(i: int) -> Rect2:
 	return Rect2(8.0, _palette_top() + i * PALETTE_ROW, GRID_LEFT - 16.0, PALETTE_ROW - 4.0)
 
 func _draw_palette() -> void:
-	draw_string(_font, Vector2(12.0, _palette_top() - 8.0), "CONSTRUIR (1-8)",
+	draw_string(_font, Vector2(12.0, _palette_top() - 8.0), "CONSTRUIR (1-8) · dir = remover",
 		HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(0.8, 0.85, 0.95))
 	for z in 8:
 		var r := _palette_item_rect(z)

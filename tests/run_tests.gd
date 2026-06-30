@@ -17,6 +17,7 @@ func _initialize() -> void:
 	_test_upkeep_charged_monthly()
 	_test_net_drives_money()
 	_test_grid_starts_full()
+	_test_demolish_clears_lot()
 	_test_indicators_start_at_default()
 	_test_happiness_is_average_of_indicators()
 	_test_indicators_react_to_demand()
@@ -106,6 +107,14 @@ func _test_net_drives_money() -> void:
 	c.advance(1.0)
 	_expect("money moves by net per second",
 		is_equal_approx(c.money, start + c.net_per_sec()))
+
+func _test_demolish_clears_lot() -> void:
+	var c := CitySim.new(10000.0)
+	c.build(CitySim.Zone.COMMERCIAL, 0)
+	var ok := c.demolish(0)
+	var empty_again := c.demolish(0)  # already empty -> no-op
+	_expect("demolish clears the lot, no-op when empty",
+		ok and c.slots[0] == null and not empty_again)
 
 func _test_grid_starts_full() -> void:
 	var c := CitySim.new(10000.0)
