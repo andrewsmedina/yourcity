@@ -6,8 +6,9 @@ extends Control
 ## it stays crisp regardless of the day/night tint. Clicks are handled in
 ## main._input (GUI hit-testing is unreliable in this macOS borderless window).
 
-const GRID_TOP := 80.0  # top margin: room for the HUD + a gap before the lots
-const TILE := 48.0      # fixed lot size; the window height grows with row count
+const GRID_TOP := 80.0   # top bar (HUD) — not buildable
+const GRID_LEFT := 300.0  # left sidebar (indicators) — not buildable; sync with IndicatorBars
+const TILE := 48.0       # fixed lot size; the window height grows with row count
 
 const ZONE_COLOR := {
 	CitySim.Zone.RESIDENTIAL: Color(0.40, 0.80, 0.50),
@@ -45,8 +46,10 @@ func _input(event: InputEvent) -> void:
 	# valid way to resolve it. Use local mouse position so clicks map to the same
 	# space we draw in, regardless of window scaling on macOS.
 	var p := get_local_mouse_position()
+	if p.x < GRID_LEFT or p.y < GRID_TOP:
+		return  # click landed in the top bar or left sidebar — not buildable
 	var tile := tile_size()
-	var col := int(p.x / tile)
+	var col := int((p.x - GRID_LEFT) / tile)
 	var row := int((p.y - GRID_TOP) / tile)
 	if col < 0 or col >= CitySim.GRID_COLS or row < 0 or row >= CitySim.GRID_ROWS:
 		return
@@ -63,18 +66,27 @@ func _draw() -> void:
 	var tile := tile_size()
 	if tile <= 1.0:
 		return  # not sized yet
+	_draw_chrome()
 	var sim := City.sim
 	var pulse := 0.55 + 0.35 * sin(_t * 4.0)
 	for i in CitySim.MAX_SLOTS:
 		var col := i % CitySim.GRID_COLS
 		var row := i / CitySim.GRID_COLS
-		var rect := Rect2(col * tile + 1.0, GRID_TOP + row * tile + 1.0, tile - 2.0, tile - 2.0)
+		var rect := Rect2(GRID_LEFT + col * tile + 1.0, GRID_TOP + row * tile + 1.0, tile - 2.0, tile - 2.0)
 		if i >= sim.slots.size():
 			_draw_locked(rect)  # not yet unlocked
 		elif sim.slots[i] == null:
 			_draw_empty(rect, pulse)
 		else:
 			_draw_building(rect, sim.slots[i], tile)
+
+# Dark panels for the non-buildable top bar and left sidebar.
+func _draw_chrome() -> void:
+	var w := maxf(size.x, DisplayServer.window_get_size().x)
+	var h := maxf(size.y, DisplayServer.window_get_size().y)
+	var chrome := Color(0.10, 0.12, 0.18, 0.9)
+	draw_rect(Rect2(0, 0, w, GRID_TOP), chrome, true)       # top bar
+	draw_rect(Rect2(0, 0, GRID_LEFT, h), chrome, true)      # left sidebar
 
 func _draw_locked(rect: Rect2) -> void:
 	draw_rect(rect, Color(1, 1, 1, 0.05), true)

@@ -24,7 +24,7 @@ func _ready() -> void:
 	add_child(_toast)
 
 	_panel = PanelContainer.new()
-	_panel.position = Vector2(8, 58)
+	_panel.position = Vector2(320, 90)  # in the play area, clear of the top bar/sidebar
 	_panel.visible = false
 	add_child(_panel)
 	var vb := VBoxContainer.new()
