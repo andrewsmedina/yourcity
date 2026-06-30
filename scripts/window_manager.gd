@@ -13,9 +13,9 @@ extends Node
 ## panels/struts, so pinning to the usable rect's bottom edge Just Works on all
 ## three. (The macOS menu-bar status icon lives in issue #7.)
 
-const HEIGHT_IDLE := 800  # GRID_TOP(80) + GRID_ROWS(15) * TILE(48)
-const HEIGHT_EXPANDED := 980
-const MIN_SIZE := Vector2i(1280, 800)
+const HEIGHT_IDLE := 900  # grid (80 + 15*48 = 800) + sidebar room for palette/gifts
+const HEIGHT_EXPANDED := 1080
+const MIN_SIZE := Vector2i(1280, 900)
 
 var _expanded := false
 

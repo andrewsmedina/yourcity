@@ -26,12 +26,13 @@ func _ready() -> void:
 	_apply_scale()
 
 func _on_gift_received(gift: int) -> void:
-	var gift_name: String = CitySim.GIFT_NAME[gift]
-	_report.text = "🎁 Presente: %s!" % gift_name
+	var gift_name: String = CitySim.ZONE_NAME[gift]
+	_report.text = "🎁 Presente: %s! Posicione no mapa (paleta)." % gift_name
 	_report.modulate.a = 1.0
 	if not TrayIcon.muted:
 		_sound.play()
-	TrayIcon.notify("TaskbarCity — Presente!", "Você recebeu: %s" % gift_name)
+	TrayIcon.notify("TaskbarCity — Presente: %s" % gift_name,
+		"Posicione no mapa pela paleta à esquerda")
 	var tween := create_tween()
 	tween.tween_interval(4.0)
 	tween.tween_property(_report, "modulate:a", 0.0, 0.8)
@@ -56,8 +57,9 @@ func _process(_delta: float) -> void:
 	var s := City.sim
 	var pause := "⏸ PAUSADO (P)   " if City.paused else ""
 	var gifts := ""
-	for g in s.gifts_received:
-		gifts += " " + CitySim.GIFT_NAME[g]
+	for g in CitySim.GIFT_ZONES:
+		if s.has_gift(g):
+			gifts += " " + CitySim.ZONE_NAME[g]
 	if gifts != "":
 		gifts = "   🎁" + gifts
 	_label.text = pause + "🗓 Ano %d Mês %d   %s   $%d   👥 %d/%d   😊 %d   🏛 %d%% [/]   🔨 %s%s    " % [

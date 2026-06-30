@@ -16,7 +16,14 @@ extends RefCounted
 enum Zone {
 	RESIDENTIAL, COMMERCIAL, INDUSTRIAL,
 	POLICE, SCHOOL, HOSPITAL, ROADS, POWER,
+	PARK, BANK, STADIUM,  # gifts — placeable once granted by a milestone
 }
+
+## The 8 zones the player builds normally (keys 1-8); gifts are placed separately.
+const BUILDABLE_ZONES := [
+	Zone.RESIDENTIAL, Zone.COMMERCIAL, Zone.INDUSTRIAL,
+	Zone.POLICE, Zone.SCHOOL, Zone.HOSPITAL, Zone.ROADS, Zone.POWER,
+]
 
 const ZONE_NAME := {
 	Zone.RESIDENTIAL: "Residencial",
@@ -27,6 +34,9 @@ const ZONE_NAME := {
 	Zone.HOSPITAL: "Hospital",
 	Zone.ROADS: "Vias",
 	Zone.POWER: "Usina",
+	Zone.PARK: "Parque",
+	Zone.BANK: "Banco",
+	Zone.STADIUM: "Estádio",
 }
 
 enum Indicator { SECURITY, EDUCATION, HEALTH, TRAFFIC, ENERGY }
@@ -47,13 +57,12 @@ const PHASE_POP := {
 	Phase.METROPOLIS: 50000.0,
 }
 
-# Gifts awarded at population milestones (#endgame). Each grants a passive bonus.
-enum Gift { PARK, BANK, STADIUM }
-const GIFTS := [Gift.PARK, Gift.BANK, Gift.STADIUM]
-const GIFT_NAME := { Gift.PARK: "Parque", Gift.BANK: "Banco", Gift.STADIUM: "Estádio" }
-const GIFT_POP := { Gift.PARK: 500.0, Gift.BANK: 2000.0, Gift.STADIUM: 5000.0 }
-const GIFT_HAPPINESS := { Gift.PARK: 5.0, Gift.BANK: 0.0, Gift.STADIUM: 10.0 }
-const BANK_TAX_BONUS := 0.25  # +25% tax income while the Bank is owned
+# Gifts: granted at a population milestone, then placed on the map by the player.
+# The bonus applies while the gift building stands.
+const GIFT_ZONES := [Zone.PARK, Zone.BANK, Zone.STADIUM]
+const GIFT_POP := { Zone.PARK: 500.0, Zone.BANK: 2000.0, Zone.STADIUM: 5000.0 }
+const GIFT_HAPPINESS := { Zone.PARK: 5.0, Zone.BANK: 0.0, Zone.STADIUM: 10.0 }
+const BANK_TAX_BONUS := 0.25  # +25% tax income while a Bank stands
 
 enum CrisisType { CRIME, EPIDEMIC, DROPOUT, GRIDLOCK, BLACKOUT }
 
@@ -86,12 +95,14 @@ const ZONE_COST := {
 	Zone.ROADS: 100.0,
 	Zone.POLICE: 500.0, Zone.SCHOOL: 500.0, Zone.HOSPITAL: 500.0,
 	Zone.POWER: 3000.0,
+	Zone.PARK: 0.0, Zone.BANK: 0.0, Zone.STADIUM: 0.0,  # gifts are free
 }
 const ZONE_UPKEEP := {  # ongoing cost/sec — services & infra; plain zones are free
 	Zone.RESIDENTIAL: 0.0, Zone.COMMERCIAL: 0.0, Zone.INDUSTRIAL: 0.0,
 	Zone.ROADS: 0.5,
 	Zone.POLICE: 1.0, Zone.SCHOOL: 1.0, Zone.HOSPITAL: 1.0,
 	Zone.POWER: 2.0,
+	Zone.PARK: 0.0, Zone.BANK: 0.0, Zone.STADIUM: 0.0,
 }
 
 # Tax is the main revenue: rate x (residents + businesses). High tax earns more
@@ -126,6 +137,9 @@ const ZONE_UNLOCK_PHASE := {
 	Zone.POLICE: Phase.VILLAGE,
 	Zone.SCHOOL: Phase.VILLAGE,
 	Zone.HOSPITAL: Phase.VILLAGE,
+	Zone.PARK: Phase.VILLAGE,
+	Zone.BANK: Phase.VILLAGE,
+	Zone.STADIUM: Phase.VILLAGE,
 }
 
 # --- Indicators ---
@@ -216,7 +230,8 @@ var last_year_tax := 0.0
 var last_year_upkeep := 0.0
 
 var slots: Array = []  # each entry is a Zone value, or null when empty
-var gifts_received := {}  # Gift -> true once its milestone is reached
+var gift_granted := {}    # gift Zone -> true once its milestone has been reached
+var gift_available := {}  # gift Zone -> true while granted but not yet placed
 
 var _crisis_elapsed := {}  # CrisisType -> seconds active (key present iff active)
 
@@ -248,18 +263,25 @@ func phase() -> Phase:
 func is_zone_unlocked(zone: Zone) -> bool:
 	return int(phase()) >= int(ZONE_UNLOCK_PHASE[zone])
 
+func is_gift(zone: Zone) -> bool:
+	return GIFT_ZONES.has(zone)
+
 func can_build(zone: Zone, slot_index: int) -> bool:
-	return is_zone_unlocked(zone) \
-		and slot_index >= 0 and slot_index < slots.size() \
-		and slots[slot_index] == null \
-		and money >= ZONE_COST[zone]
+	if slot_index < 0 or slot_index >= slots.size() or slots[slot_index] != null:
+		return false
+	if is_gift(zone):
+		return gift_available.has(zone)  # free, only if granted and not placed
+	return is_zone_unlocked(zone) and money >= ZONE_COST[zone]
 
 ## Build a zone into an empty unlocked slot. Returns false (no-op) if the slot
 ## is taken/locked or there isn't enough money.
 func build(zone: Zone, slot_index: int) -> bool:
 	if not can_build(zone, slot_index):
 		return false
-	money -= ZONE_COST[zone]
+	if is_gift(zone):
+		gift_available.erase(zone)  # gift consumed (placed)
+	else:
+		money -= ZONE_COST[zone]
 	slots[slot_index] = zone
 	_recompute_rates()
 	return true
@@ -302,20 +324,22 @@ func happiness() -> float:
 	var base := total / INDICATORS.size()
 	return clampf(base + (TAX_COMFORT - tax_rate) * TAX_HAPPINESS + _gift_happiness(), 0.0, 100.0)
 
-func has_gift(gift: Gift) -> bool:
-	return gifts_received.has(gift)
+## Whether a gift building currently stands in the city (its bonus is active).
+func has_gift(gift: Zone) -> bool:
+	return zone_count(gift) > 0
 
 func _gift_happiness() -> float:
 	var bonus := 0.0
-	for g in gifts_received:
-		bonus += GIFT_HAPPINESS[g]
+	for g in GIFT_ZONES:
+		if has_gift(g):
+			bonus += GIFT_HAPPINESS[g]
 	return bonus
 
 ## Tax revenue per second at the current rate (residents + businesses).
 func tax_income() -> float:
 	var businesses := zone_count(Zone.COMMERCIAL) + zone_count(Zone.INDUSTRIAL)
 	var income := (population * TAX_PER_RESIDENT + businesses * TAX_PER_BUSINESS) * tax_rate
-	if has_gift(Gift.BANK):
+	if has_gift(Zone.BANK):
 		income *= 1.0 + BANK_TAX_BONUS
 	return income
 
@@ -353,9 +377,10 @@ func advance(delta: float) -> void:
 	_sync_slots()
 
 func _check_gifts() -> void:
-	for gift in GIFTS:
-		if not gifts_received.has(gift) and population >= GIFT_POP[gift]:
-			gifts_received[gift] = true
+	for gift in GIFT_ZONES:
+		if not gift_granted.has(gift) and population >= GIFT_POP[gift]:
+			gift_granted[gift] = true
+			gift_available[gift] = true  # ready for the player to place
 
 func _settle_year() -> void:
 	last_year_tax = _year_tax
@@ -445,7 +470,8 @@ func to_dict() -> Dictionary:
 		"slots": slots.duplicate(),
 		"indicators": inds,
 		"crises": crises,
-		"gifts": gifts_received.keys(),
+		"gift_granted": gift_granted.keys(),
+		"gift_available": gift_available.keys(),
 	}
 
 func from_dict(data: Dictionary) -> void:
@@ -468,9 +494,12 @@ func from_dict(data: Dictionary) -> void:
 	_crisis_elapsed = {}
 	for key in data.get("crises", {}):
 		_crisis_elapsed[int(key)] = float(data["crises"][key])
-	gifts_received = {}
-	for g in data.get("gifts", []):
-		gifts_received[int(g)] = true
+	gift_granted = {}
+	for g in data.get("gift_granted", []):
+		gift_granted[int(g)] = true
+	gift_available = {}
+	for g in data.get("gift_available", []):
+		gift_available[int(g)] = true
 	_last_year = year()
 	_sync_slots()
 	_recompute_rates()

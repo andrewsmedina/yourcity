@@ -10,7 +10,7 @@ signal city_changed  ## zones built or slots unlocked — the view should refres
 signal crisis_started(crisis: CitySim.CrisisType)
 signal crisis_ended(crisis: CitySim.CrisisType)
 signal year_passed(year: int, tax: float, upkeep: float)
-signal gift_received(gift: CitySim.Gift)
+signal gift_received(zone: CitySim.Zone)  ## a gift was granted; place it on the map
 
 var sim := CitySim.new()
 var selected_zone: CitySim.Zone = CitySim.Zone.RESIDENTIAL  ## zone the next build places
@@ -25,7 +25,7 @@ var _autosave_accum := 0.0
 
 func _ready() -> void:
 	load_game()
-	for g in sim.gifts_received:  # don't re-announce gifts already in the save
+	for g in sim.gift_granted:  # don't re-announce gifts already in the save
 		_known_gifts[g] = true
 
 func _process(delta: float) -> void:
@@ -42,7 +42,7 @@ func _process(delta: float) -> void:
 	sim.advance(delta)
 	if sim.year() != prev_year:
 		year_passed.emit(sim.year(), sim.last_year_tax, sim.last_year_upkeep)
-	for g in sim.gifts_received:
+	for g in sim.gift_granted:
 		if not _known_gifts.has(g):
 			_known_gifts[g] = true
 			gift_received.emit(g)

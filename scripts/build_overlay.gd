@@ -21,6 +21,9 @@ const ZONE_EMOJI := {
 	CitySim.Zone.HOSPITAL: "🏥",
 	CitySim.Zone.ROADS: "🛣️",
 	CitySim.Zone.POWER: "⚡",
+	CitySim.Zone.PARK: "🌳",
+	CitySim.Zone.BANK: "🏦",
+	CitySim.Zone.STADIUM: "🏟️",
 }
 
 const ZONE_COLOR := {
@@ -66,9 +69,10 @@ func _input(event: InputEvent) -> void:
 			if _tax_plus_rect().has_point(p):
 				City.sim.adjust_tax(CitySim.TAX_STEP)
 				return
-			for z in 8:
-				if _palette_item_rect(z).has_point(p):
-					City.selected_zone = z
+			var zones := _palette_zones()
+			for i in zones.size():
+				if _palette_item_rect(i).has_point(p):
+					City.selected_zone = zones[i]
 					return
 			return
 		var slot := _slot_at(p)
@@ -115,7 +119,15 @@ func _draw() -> void:
 		else:
 			_draw_building(rect, sim.slots[i], tile)
 
-# Build palette lives below the indicators in the left sidebar.
+# Build palette lives below the indicators in the left sidebar. It lists the 8
+# buildable zones plus any granted-but-unplaced gifts.
+func _palette_zones() -> Array:
+	var list: Array = CitySim.BUILDABLE_ZONES.duplicate()
+	for g in CitySim.GIFT_ZONES:
+		if City.sim.gift_available.has(g):
+			list.append(g)
+	return list
+
 func _palette_top() -> float:
 	return 92.0 + 7.0 * (22.0 * Settings.ui_scale) + 24.0
 
@@ -125,9 +137,12 @@ func _palette_item_rect(i: int) -> Rect2:
 func _draw_palette() -> void:
 	draw_string(_font, Vector2(12.0, _palette_top() - 8.0), "CONSTRUIR (1-8) · dir = remover ($10)",
 		HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(0.8, 0.85, 0.95))
-	for z in 8:
-		var r := _palette_item_rect(z)
+	var zones := _palette_zones()
+	for i in zones.size():
+		var z: int = zones[i]
+		var r := _palette_item_rect(i)
 		var selected := int(City.selected_zone) == z
+		var is_gift := i >= CitySim.BUILDABLE_ZONES.size()
 		draw_rect(r, Color(0.25, 0.45, 0.8, 0.55) if selected else Color(1, 1, 1, 0.06), true)
 		if selected:
 			draw_rect(r, Color(0.6, 0.85, 1.0, 0.95), false, 2.0)
@@ -137,13 +152,14 @@ func _draw_palette() -> void:
 		else:
 			draw_string(_emoji_font, Vector2(sw.position.x, sw.get_center().y + sw.size.y * 0.4),
 				ZONE_EMOJI[z], HORIZONTAL_ALIGNMENT_CENTER, sw.size.x, int(sw.size.y * 0.95))
+		var tag := "🎁" if is_gift else str(i + 1)
 		draw_string(_font, Vector2(sw.end.x + 10.0, r.get_center().y + PALETTE_FS * 0.35),
-			"%d  %s" % [z + 1, CitySim.ZONE_NAME[z]],
+			"%s  %s" % [tag, CitySim.ZONE_NAME[z]],
 			HORIZONTAL_ALIGNMENT_LEFT, r.size.x, PALETTE_FS, Color.WHITE)
 
 # Tax control (- rate +) below the palette in the sidebar.
 func _tax_row_y() -> float:
-	return _palette_top() + 8.0 * PALETTE_ROW + 22.0
+	return _palette_top() + _palette_zones().size() * PALETTE_ROW + 22.0
 
 func _tax_minus_rect() -> Rect2:
 	return Rect2(12.0, _tax_row_y(), 44.0, 32.0)
