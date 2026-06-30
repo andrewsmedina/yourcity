@@ -135,9 +135,8 @@ func _draw_palette() -> void:
 		if _zone_textures.has(z):
 			draw_texture_rect(_zone_textures[z], sw, false)
 		else:
-			draw_rect(sw, ZONE_COLOR[z], true)
-			draw_string(_emoji_font, Vector2(sw.position.x, sw.get_center().y + sw.size.y * 0.35),
-				ZONE_EMOJI[z], HORIZONTAL_ALIGNMENT_CENTER, sw.size.x, int(sw.size.y * 0.8))
+			draw_string(_emoji_font, Vector2(sw.position.x, sw.get_center().y + sw.size.y * 0.4),
+				ZONE_EMOJI[z], HORIZONTAL_ALIGNMENT_CENTER, sw.size.x, int(sw.size.y * 0.95))
 		draw_string(_font, Vector2(sw.end.x + 10.0, r.get_center().y + PALETTE_FS * 0.35),
 			"%d  %s" % [z + 1, CitySim.ZONE_NAME[z]],
 			HORIZONTAL_ALIGNMENT_LEFT, r.size.x, PALETTE_FS, Color.WHITE)
@@ -191,10 +190,7 @@ func _draw_building(rect: Rect2, zone: int, tile: float) -> void:
 	if _zone_textures.has(zone):
 		draw_texture_rect(_zone_textures[zone], rect, false)
 		return
-	var color: Color = ZONE_COLOR[zone]
-	draw_rect(rect, color, true)
-	draw_rect(rect, color.darkened(0.4), false, 1.5)
 	var emoji: String = ZONE_EMOJI[zone]
-	var font_size := maxi(8, int(tile * 0.7))
+	var font_size := maxi(8, int(tile * 0.85))  # bigger — no background behind it
 	draw_string(_emoji_font, Vector2(rect.position.x, rect.get_center().y + font_size * 0.35),
 		emoji, HORIZONTAL_ALIGNMENT_CENTER, rect.size.x, font_size)
