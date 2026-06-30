@@ -127,7 +127,8 @@ const INDICATOR_START := 60.0  # a fresh city starts stable
 # with POPULATION, while traffic/energy demand grows with the building count.
 const SERVICE_BOOST := 0.5             # indicator supply per matching service
 const DEMAND_PER_RESIDENT := 0.0005    # people-service demand per resident (~1 service / 1000 pop)
-const DEMAND_PER_BUILDING := 0.03      # traffic/energy demand per built lot (~1 service / 16)
+const DEMAND_PER_BUILDING := 0.03      # traffic demand per built lot (~1 Vias / 16)
+const ENERGY_DEMAND_PER_BUILDING := 0.01  # energy demand per built lot (~1 Usina / 50)
 
 # --- Happiness thresholds ---
 const HAPPY_HIGH := 70.0
@@ -460,8 +461,10 @@ func indicator_rate(ind: Indicator) -> float:
 	match ind:
 		Indicator.SECURITY, Indicator.EDUCATION, Indicator.HEALTH:
 			demand = population * DEMAND_PER_RESIDENT
-		Indicator.TRAFFIC, Indicator.ENERGY:
+		Indicator.TRAFFIC:
 			demand = building_count() * DEMAND_PER_BUILDING
+		Indicator.ENERGY:
+			demand = building_count() * ENERGY_DEMAND_PER_BUILDING
 	return supply - demand
 
 func _pop_factor() -> float:
