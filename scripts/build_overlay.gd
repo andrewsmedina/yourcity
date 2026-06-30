@@ -9,6 +9,8 @@ extends Control
 const GRID_TOP := 80.0   # top bar (HUD) — not buildable
 const GRID_LEFT := 300.0  # left sidebar (indicators) — not buildable; sync with IndicatorBars
 const TILE := 48.0       # fixed lot size; the window height grows with row count
+const PALETTE_ROW := 38.0
+const PALETTE_FS := 18
 
 const ZONE_COLOR := {
 	CitySim.Zone.RESIDENTIAL: Color(0.40, 0.80, 0.50),
@@ -46,8 +48,15 @@ func _input(event: InputEvent) -> void:
 	# valid way to resolve it. Use local mouse position so clicks map to the same
 	# space we draw in, regardless of window scaling on macOS.
 	var p := get_local_mouse_position()
-	if p.x < GRID_LEFT or p.y < GRID_TOP:
-		return  # click landed in the top bar or left sidebar — not buildable
+	if p.x < GRID_LEFT:
+		# Click in the sidebar: maybe a build-palette item.
+		for z in 8:
+			if _palette_item_rect(z).has_point(p):
+				City.selected_zone = z
+				return
+		return
+	if p.y < GRID_TOP:
+		return  # click landed in the top bar — not buildable
 	var tile := tile_size()
 	var col := int((p.x - GRID_LEFT) / tile)
 	var row := int((p.y - GRID_TOP) / tile)
@@ -67,6 +76,7 @@ func _draw() -> void:
 	if tile <= 1.0:
 		return  # not sized yet
 	_draw_chrome()
+	_draw_palette()
 	var sim := City.sim
 	var pulse := 0.55 + 0.35 * sin(_t * 4.0)
 	for i in CitySim.MAX_SLOTS:
@@ -79,6 +89,31 @@ func _draw() -> void:
 			_draw_empty(rect, pulse)
 		else:
 			_draw_building(rect, sim.slots[i], tile)
+
+# Build palette lives below the indicators in the left sidebar.
+func _palette_top() -> float:
+	return 92.0 + 7.0 * (22.0 * Settings.ui_scale) + 24.0
+
+func _palette_item_rect(i: int) -> Rect2:
+	return Rect2(8.0, _palette_top() + i * PALETTE_ROW, GRID_LEFT - 16.0, PALETTE_ROW - 4.0)
+
+func _draw_palette() -> void:
+	draw_string(_font, Vector2(12.0, _palette_top() - 8.0), "CONSTRUIR (1-8)",
+		HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(0.8, 0.85, 0.95))
+	for z in 8:
+		var r := _palette_item_rect(z)
+		var selected := int(City.selected_zone) == z
+		draw_rect(r, Color(0.25, 0.45, 0.8, 0.55) if selected else Color(1, 1, 1, 0.06), true)
+		if selected:
+			draw_rect(r, Color(0.6, 0.85, 1.0, 0.95), false, 2.0)
+		var sw := Rect2(r.position.x + 6.0, r.position.y + 5.0, r.size.y - 10.0, r.size.y - 10.0)
+		if _zone_textures.has(z):
+			draw_texture_rect(_zone_textures[z], sw, false)
+		else:
+			draw_rect(sw, ZONE_COLOR[z], true)
+		draw_string(_font, Vector2(sw.end.x + 10.0, r.get_center().y + PALETTE_FS * 0.35),
+			"%d  %s" % [z + 1, CitySim.ZONE_NAME[z]],
+			HORIZONTAL_ALIGNMENT_LEFT, r.size.x, PALETTE_FS, Color.WHITE)
 
 # Dark panels for the non-buildable top bar and left sidebar.
 func _draw_chrome() -> void:
