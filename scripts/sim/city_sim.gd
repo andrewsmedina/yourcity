@@ -469,8 +469,16 @@ func indicator_rate(ind: Indicator) -> float:
 		Indicator.TRAFFIC:
 			demand = building_count() * DEMAND_PER_BUILDING
 		Indicator.ENERGY:
-			demand = building_count() * ENERGY_DEMAND_PER_BUILDING
+			demand = _energy_consumers() * ENERGY_DEMAND_PER_BUILDING
 	return supply - demand
+
+## Buildings that draw power — everything except roads and the power plants.
+func _energy_consumers() -> int:
+	var n := 0
+	for s in slots:
+		if s != null and s != Zone.ROADS and s != Zone.POWER:
+			n += 1
+	return n
 
 func _pop_factor() -> float:
 	var h := happiness()
