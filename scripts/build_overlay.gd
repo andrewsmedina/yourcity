@@ -77,12 +77,18 @@ func _input(event: InputEvent) -> void:
 					return
 			return
 		var slot := _slot_at(p)
-		if slot >= 0 and City.sim.slots[slot] == null:
-			City.build(City.selected_zone, slot)
+		if slot >= 0:
+			if City.selected_zone == CitySim.Zone.POWERLINE:
+				City.build(CitySim.Zone.POWERLINE, slot)  # overlay — any lot
+			elif City.sim.slots[slot] == null:
+				City.build(City.selected_zone, slot)
 	elif event.button_index == MOUSE_BUTTON_RIGHT:
-		var slot := _slot_at(p)  # right-click bulldozes a built lot
-		if slot >= 0 and City.sim.slots[slot] != null:
-			City.demolish(slot)
+		var slot := _slot_at(p)  # right-click removes line first, then a building
+		if slot >= 0:
+			if City.sim.has_line(slot):
+				City.remove_line(slot)
+			elif City.sim.slots[slot] != null:
+				City.demolish(slot)
 
 ## The slot index under a local point, or -1 if it's outside the build grid.
 func _slot_at(p: Vector2) -> int:
@@ -119,6 +125,8 @@ func _draw() -> void:
 			_draw_empty(rect, pulse)
 		else:
 			_draw_building(rect, sim.slots[i], tile, sim.is_functional(i))
+		if i < sim.lines.size() and sim.lines[i]:
+			_draw_line_overlay(rect)
 
 # Build palette lives below the indicators in the left sidebar. It lists the 8
 # buildable zones plus any granted-but-unplaced gifts.
@@ -190,6 +198,13 @@ func _draw_chrome() -> void:
 	var chrome := Color(0.10, 0.12, 0.18, 0.9)
 	draw_rect(Rect2(0, 0, w, GRID_TOP), chrome, true)       # top bar
 	draw_rect(Rect2(0, 0, GRID_LEFT, h), chrome, true)      # left sidebar
+
+# Power-line overlay: yellow wires crossing the lot, on top of whatever's there.
+func _draw_line_overlay(rect: Rect2) -> void:
+	var c := rect.get_center()
+	var col := Color(1.0, 0.9, 0.2, 0.9)
+	draw_line(Vector2(rect.position.x, c.y), Vector2(rect.end.x, c.y), col, 3.0)
+	draw_line(Vector2(c.x, rect.position.y), Vector2(c.x, rect.end.y), col, 3.0)
 
 func _draw_locked(rect: Rect2) -> void:
 	draw_rect(rect, Color(1, 1, 1, 0.05), true)

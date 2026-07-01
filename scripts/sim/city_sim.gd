@@ -25,8 +25,9 @@ const BUILDABLE_ZONES := [
 	Zone.POLICE, Zone.SCHOOL, Zone.HOSPITAL, Zone.ROADS, Zone.POWER, Zone.POWERLINE,
 ]
 
-## Infrastructure — always active, doesn't itself need power/road.
-const INFRA_ZONES := [Zone.ROADS, Zone.POWER, Zone.POWERLINE]
+## Infrastructure lots — always active, don't need power/road themselves.
+## (POWERLINE is an overlay, not lot content, so it's not here.)
+const INFRA_ZONES := [Zone.ROADS, Zone.POWER]
 
 const ZONE_NAME := {
 	Zone.RESIDENTIAL: "Residencial",
@@ -212,6 +213,7 @@ var last_year_tax := 0.0
 var last_year_upkeep := 0.0
 
 var slots: Array = []  # each entry is a Zone value, or null when empty
+var lines: Array = []  # per-slot bool: a power-line overlay runs on this lot
 var gift_granted := {}    # gift Zone -> true once its milestone has been reached
 var gift_available := {}  # gift Zone -> true while granted but not yet placed
 
@@ -253,18 +255,29 @@ func is_zone_unlocked(zone: Zone) -> bool:
 func is_gift(zone: Zone) -> bool:
 	return GIFT_ZONES.has(zone)
 
+func has_line(slot_index: int) -> bool:
+	return slot_index >= 0 and slot_index < lines.size() and lines[slot_index]
+
 func can_build(zone: Zone, slot_index: int) -> bool:
-	if slot_index < 0 or slot_index >= slots.size() or slots[slot_index] != null:
+	if slot_index < 0 or slot_index >= slots.size():
+		return false
+	if zone == Zone.POWERLINE:  # overlay — goes on any lot without a line yet
+		return not lines[slot_index] and money >= ZONE_COST[Zone.POWERLINE]
+	if slots[slot_index] != null:
 		return false
 	if is_gift(zone):
 		return gift_available.has(zone)  # free, only if granted and not placed
 	return is_zone_unlocked(zone) and money >= ZONE_COST[zone]
 
-## Build a zone into an empty unlocked slot. Returns false (no-op) if the slot
-## is taken/locked or there isn't enough money.
+## Build a zone (or lay a power line overlay). Returns false (no-op) if invalid.
 func build(zone: Zone, slot_index: int) -> bool:
 	if not can_build(zone, slot_index):
 		return false
+	if zone == Zone.POWERLINE:
+		money -= ZONE_COST[Zone.POWERLINE]
+		lines[slot_index] = true
+		_recompute_rates()
+		return true
 	if is_gift(zone):
 		gift_available.erase(zone)  # gift consumed (placed)
 	else:
@@ -273,13 +286,21 @@ func build(zone: Zone, slot_index: int) -> bool:
 	_recompute_rates()
 	return true
 
-## Remove whatever is on a lot (the bulldozer); costs DEMOLISH_COST. Returns
-## false if the lot was empty.
+## Remove the building on a lot (the bulldozer); costs DEMOLISH_COST.
 func demolish(slot_index: int) -> bool:
 	if slot_index < 0 or slot_index >= slots.size() or slots[slot_index] == null:
 		return false
 	money = maxf(0.0, money - DEMOLISH_COST)
 	slots[slot_index] = null
+	_recompute_rates()
+	return true
+
+## Remove a power-line overlay from a lot; costs DEMOLISH_COST.
+func remove_line(slot_index: int) -> bool:
+	if not has_line(slot_index):
+		return false
+	money = maxf(0.0, money - DEMOLISH_COST)
+	lines[slot_index] = false
 	_recompute_rates()
 	return true
 
@@ -473,6 +494,7 @@ func to_dict() -> Dictionary:
 		"year_tax": _year_tax,
 		"year_upkeep": _year_upkeep,
 		"slots": slots.duplicate(),
+		"lines": lines.duplicate(),
 		"indicators": inds,
 		"crises": crises,
 		"gift_granted": gift_granted.keys(),
@@ -491,6 +513,11 @@ func from_dict(data: Dictionary) -> void:
 		slots = []
 		for v in saved_slots:
 			slots.append(null if v == null else int(v))
+	var saved_lines = data.get("lines", null)
+	if saved_lines != null:
+		lines = []
+		for v in saved_lines:
+			lines.append(bool(v))
 	var inds = data.get("indicators", null)
 	if inds != null:
 		for i in INDICATORS.size():
@@ -514,6 +541,8 @@ func from_dict(data: Dictionary) -> void:
 func _sync_slots() -> void:
 	while slots.size() < unlocked_slots():
 		slots.append(null)
+	while lines.size() < slots.size():
+		lines.append(false)
 
 func _recompute_rates() -> void:
 	_recompute_network()
@@ -522,6 +551,9 @@ func _recompute_rates() -> void:
 	for s in slots:
 		if s != null:
 			upkeep += ZONE_UPKEEP[s]
+	for has in lines:
+		if has:
+			upkeep += ZONE_UPKEEP[Zone.POWERLINE]
 	upkeep_per_sec = upkeep
 
 # Recompute the power + road networks and which buildings are functional.
@@ -547,7 +579,7 @@ func _recompute_network() -> void:
 	while not stack.is_empty():
 		var cur: int = stack.pop_back()
 		for nb in _neighbors(cur):
-			if slots[nb] != null and slots[nb] != Zone.ROADS and not _powered[nb]:
+			if not _powered[nb] and _conducts(nb):
 				_powered[nb] = true
 				stack.append(nb)
 	# Functional: infrastructure is always on; productive buildings need power + road.
@@ -559,6 +591,11 @@ func _recompute_network() -> void:
 			_functional[i] = true
 		else:
 			_functional[i] = _powered[i] and _road[i]
+
+# A lot carries power if it has a power-line overlay, or holds a non-road
+# building/plant. (Roads alone don't conduct — lay a line over them.)
+func _conducts(i: int) -> bool:
+	return lines[i] or (slots[i] != null and slots[i] != Zone.ROADS)
 
 func _neighbors(i: int) -> Array:
 	var col := i % GRID_COLS
