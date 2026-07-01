@@ -566,10 +566,19 @@ func _recompute_network() -> void:
 		_powered[i] = false
 		_road[i] = false
 		_functional[i] = false
-	# Road access: a lot needs an orthogonally adjacent road.
+	# Road access: flood from roads through the built area — a building is served
+	# if its contiguous block of buildings touches the road network anywhere.
+	var rstack: Array = []
 	for i in n:
-		if slots[i] != null:
-			_road[i] = _has_adjacent_road(i)
+		if slots[i] == Zone.ROADS:
+			_road[i] = true
+			rstack.append(i)
+	while not rstack.is_empty():
+		var rcur: int = rstack.pop_back()
+		for nb in _neighbors(rcur):
+			if not _road[nb] and slots[nb] != null:  # spread through any occupied lot
+				_road[nb] = true
+				rstack.append(nb)
 	# Power: flood from plants through conductors (occupied lots that aren't roads).
 	var stack: Array = []
 	for i in n:
@@ -611,11 +620,6 @@ func _neighbors(i: int) -> Array:
 		out.append(i + GRID_COLS)
 	return out
 
-func _has_adjacent_road(i: int) -> bool:
-	for nb in _neighbors(i):
-		if slots[nb] == Zone.ROADS:
-			return true
-	return false
 
 ## Net rate of change for an indicator (supply from services minus city demand).
 ## Positive = recovering, negative = falling.
