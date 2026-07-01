@@ -60,7 +60,7 @@ const PHASE_POP := {
 # Gifts: granted at a population milestone, then placed on the map by the player.
 # The bonus applies while the gift building stands.
 const GIFT_ZONES := [Zone.PARK, Zone.BANK, Zone.STADIUM]
-const GIFT_POP := { Zone.PARK: 2000.0, Zone.BANK: 7000.0, Zone.STADIUM: 200000.0 }
+const GIFT_POP := { Zone.PARK: 2000.0, Zone.BANK: 7000.0, Zone.STADIUM: 20000.0 }
 const GIFT_HAPPINESS := { Zone.PARK: 5.0, Zone.BANK: 0.0, Zone.STADIUM: 10.0 }
 const BANK_TAX_BONUS := 0.25  # +25% tax income while a Bank stands
 
