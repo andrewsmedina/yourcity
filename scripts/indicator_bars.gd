@@ -18,8 +18,6 @@ func _ready() -> void:
 		{"label": "Seg", "color": Color(0.4, 0.6, 1.0), "ind": CitySim.Indicator.SECURITY},
 		{"label": "Edu", "color": Color(0.4, 0.85, 0.5), "ind": CitySim.Indicator.EDUCATION},
 		{"label": "Saú", "color": Color(1.0, 0.45, 0.45), "ind": CitySim.Indicator.HEALTH},
-		{"label": "Trâ", "color": Color(1.0, 0.7, 0.3), "ind": CitySim.Indicator.TRAFFIC},
-		{"label": "Ene", "color": Color(1.0, 0.9, 0.3), "ind": CitySim.Indicator.ENERGY},
 	]
 
 func _process(_delta: float) -> void:
@@ -41,6 +39,12 @@ func _draw() -> void:
 		_draw_bar(margin, bar_x, y, bar_w, bar_h, fs, row.label, sim.indicators[row.ind], row.color)
 		y += bar_h + gap
 	_draw_bar(margin, bar_x, y + 4.0 * s, bar_w, bar_h, fs, "Fel", sim.happiness(), Color.WHITE)
+	# Connectivity readout (replaces the old Energy/Traffic bars).
+	var off := sim.disconnected_count()
+	var conn_y := y + (bar_h + gap) + 10.0 * s
+	var conn_col := Color(1.0, 0.5, 0.4) if off > 0 else Color(0.5, 0.9, 0.6)
+	var conn_text := "⚠ %d sem energia/via" % off if off > 0 else "✓ tudo conectado"
+	draw_string(_font, Vector2(margin, conn_y), conn_text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, conn_col)
 
 func _draw_bar(label_x: float, bar_x: float, y: float, bar_w: float, bar_h: float,
 		fs: int, label: String, value: float, color: Color) -> void:

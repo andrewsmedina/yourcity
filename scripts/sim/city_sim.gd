@@ -15,15 +15,18 @@ extends RefCounted
 
 enum Zone {
 	RESIDENTIAL, COMMERCIAL, INDUSTRIAL,
-	POLICE, SCHOOL, HOSPITAL, ROADS, POWER,
+	POLICE, SCHOOL, HOSPITAL, ROADS, POWER, POWERLINE,
 	PARK, BANK, STADIUM,  # gifts — placeable once granted by a milestone
 }
 
-## The 8 zones the player builds normally (keys 1-8); gifts are placed separately.
+## Zones the player builds normally (keys 1-9); gifts are placed separately.
 const BUILDABLE_ZONES := [
 	Zone.RESIDENTIAL, Zone.COMMERCIAL, Zone.INDUSTRIAL,
-	Zone.POLICE, Zone.SCHOOL, Zone.HOSPITAL, Zone.ROADS, Zone.POWER,
+	Zone.POLICE, Zone.SCHOOL, Zone.HOSPITAL, Zone.ROADS, Zone.POWER, Zone.POWERLINE,
 ]
+
+## Infrastructure — always active, doesn't itself need power/road.
+const INFRA_ZONES := [Zone.ROADS, Zone.POWER, Zone.POWERLINE]
 
 const ZONE_NAME := {
 	Zone.RESIDENTIAL: "Residencial",
@@ -34,12 +37,13 @@ const ZONE_NAME := {
 	Zone.HOSPITAL: "Hospital",
 	Zone.ROADS: "Vias",
 	Zone.POWER: "Usina",
+	Zone.POWERLINE: "Linha",
 	Zone.PARK: "Parque",
 	Zone.BANK: "Banco",
 	Zone.STADIUM: "Estádio",
 }
 
-enum Indicator { SECURITY, EDUCATION, HEALTH, TRAFFIC, ENERGY }
+enum Indicator { SECURITY, EDUCATION, HEALTH }
 
 enum Phase { VILLAGE, SMALL_TOWN, CITY, METROPOLIS }
 
@@ -64,25 +68,18 @@ const GIFT_POP := { Zone.PARK: 2000.0, Zone.BANK: 7000.0, Zone.STADIUM: 20000.0 
 const GIFT_HAPPINESS := { Zone.PARK: 5.0, Zone.BANK: 0.0, Zone.STADIUM: 10.0 }
 const BANK_TAX_BONUS := 0.25  # +25% tax income while a Bank stands
 
-enum CrisisType { CRIME, EPIDEMIC, DROPOUT, GRIDLOCK, BLACKOUT }
+enum CrisisType { CRIME, EPIDEMIC, DROPOUT }
 
-const CRISIS_TYPES := [
-	CrisisType.CRIME, CrisisType.EPIDEMIC, CrisisType.DROPOUT,
-	CrisisType.GRIDLOCK, CrisisType.BLACKOUT,
-]
+const CRISIS_TYPES := [CrisisType.CRIME, CrisisType.EPIDEMIC, CrisisType.DROPOUT]
 
-const INDICATORS := [
-	Indicator.SECURITY, Indicator.EDUCATION, Indicator.HEALTH,
-	Indicator.TRAFFIC, Indicator.ENERGY,
-]
+const INDICATORS := [Indicator.SECURITY, Indicator.EDUCATION, Indicator.HEALTH]
 
-## Service zone that boosts each indicator.
+## Service zone that boosts each indicator. (Roads/Power are now infrastructure —
+## traffic/energy are handled by the connectivity network, not indicators.)
 const SERVICE_FOR := {
 	Indicator.SECURITY: Zone.POLICE,
 	Indicator.EDUCATION: Zone.SCHOOL,
 	Indicator.HEALTH: Zone.HOSPITAL,
-	Indicator.TRAFFIC: Zone.ROADS,
-	Indicator.ENERGY: Zone.POWER,
 }
 
 # --- Economy (SimCity-style: cheap zones, costly infra, tax revenue) ---
@@ -94,14 +91,14 @@ const ZONE_COST := {
 	Zone.RESIDENTIAL: 100.0, Zone.COMMERCIAL: 100.0, Zone.INDUSTRIAL: 100.0,
 	Zone.ROADS: 100.0,
 	Zone.POLICE: 500.0, Zone.SCHOOL: 500.0, Zone.HOSPITAL: 500.0,
-	Zone.POWER: 3000.0,
+	Zone.POWER: 3000.0, Zone.POWERLINE: 50.0,
 	Zone.PARK: 0.0, Zone.BANK: 0.0, Zone.STADIUM: 0.0,  # gifts are free
 }
 const ZONE_UPKEEP := {  # ongoing cost/sec — services & infra; plain zones are free
 	Zone.RESIDENTIAL: 0.0, Zone.COMMERCIAL: 0.0, Zone.INDUSTRIAL: 0.0,
 	Zone.ROADS: 0.5,
 	Zone.POLICE: 1.0, Zone.SCHOOL: 1.0, Zone.HOSPITAL: 1.0,
-	Zone.POWER: 2.0,
+	Zone.POWER: 2.0, Zone.POWERLINE: 0.1,
 	Zone.PARK: 0.0, Zone.BANK: 0.0, Zone.STADIUM: 0.0,
 }
 
@@ -137,6 +134,7 @@ const ZONE_UNLOCK_PHASE := {
 	Zone.POLICE: Phase.VILLAGE,
 	Zone.SCHOOL: Phase.VILLAGE,
 	Zone.HOSPITAL: Phase.VILLAGE,
+	Zone.POWERLINE: Phase.VILLAGE,
 	Zone.PARK: Phase.VILLAGE,
 	Zone.BANK: Phase.VILLAGE,
 	Zone.STADIUM: Phase.VILLAGE,
@@ -154,8 +152,6 @@ const RESIDENTS_PER_SERVICE := {
 	Indicator.EDUCATION: 1500.0,
 	Indicator.HEALTH: 2500.0,
 }
-const DEMAND_PER_BUILDING := 0.03      # traffic demand per built lot (~1 Vias / 16)
-const ENERGY_DEMAND_PER_BUILDING := 0.01  # energy demand per built lot (~1 Usina / 50)
 
 # --- Happiness thresholds ---
 const HAPPY_HIGH := 70.0
@@ -174,15 +170,11 @@ const CRISIS_INDICATOR := {
 	CrisisType.CRIME: Indicator.SECURITY,
 	CrisisType.EPIDEMIC: Indicator.HEALTH,
 	CrisisType.DROPOUT: Indicator.EDUCATION,
-	CrisisType.GRIDLOCK: Indicator.TRAFFIC,
-	CrisisType.BLACKOUT: Indicator.ENERGY,
 }
 const CRISIS_TITLE := {
 	CrisisType.CRIME: "Onda de Crimes",
 	CrisisType.EPIDEMIC: "Epidemia",
 	CrisisType.DROPOUT: "Evasão Escolar",
-	CrisisType.GRIDLOCK: "Engarrafamento",
-	CrisisType.BLACKOUT: "Apagão",
 }
 # 2-3 response options per crisis: cheap small bump vs expensive big fix.
 const CRISIS_RESPONSES := {
@@ -200,16 +192,6 @@ const CRISIS_RESPONSES := {
 		{"label": "Construir escola", "cost": 5000.0, "bump": 40.0},
 		{"label": "Bolsas de estudo", "cost": 2000.0, "bump": 25.0},
 		{"label": "Contratar professores", "cost": 1000.0, "bump": 15.0},
-	],
-	CrisisType.GRIDLOCK: [
-		{"label": "Expandir vias", "cost": 5000.0, "bump": 40.0},
-		{"label": "Transporte público", "cost": 2000.0, "bump": 25.0},
-		{"label": "Sincronizar semáforos", "cost": 1000.0, "bump": 15.0},
-	],
-	CrisisType.BLACKOUT: [
-		{"label": "Construir usina", "cost": 5000.0, "bump": 40.0},
-		{"label": "Comprar energia", "cost": 2000.0, "bump": 25.0},
-		{"label": "Racionar consumo", "cost": 1000.0, "bump": 15.0},
 	],
 }
 
@@ -232,6 +214,11 @@ var last_year_upkeep := 0.0
 var slots: Array = []  # each entry is a Zone value, or null when empty
 var gift_granted := {}    # gift Zone -> true once its milestone has been reached
 var gift_available := {}  # gift Zone -> true while granted but not yet placed
+
+# Connectivity network (recomputed on build/demolish). Per-slot flags.
+var _powered: Array = []      # reachable from a power plant through conductors
+var _road: Array = []         # adjacent to a road
+var _functional: Array = []   # productive building that is powered AND road-connected
 
 var _crisis_elapsed := {}  # CrisisType -> seconds active (key present iff active)
 
@@ -303,7 +290,19 @@ func zone_count(zone: Zone) -> int:
 			n += 1
 	return n
 
-## Total built lots — the demand driver for every indicator.
+## Count of a zone that is currently functional (powered + road-connected).
+## Infrastructure (roads/power/lines) counts whenever present.
+func functional_zone_count(zone: Zone) -> int:
+	var n := 0
+	for i in slots.size():
+		if slots[i] == zone and _functional[i]:
+			n += 1
+	return n
+
+func is_functional(slot_index: int) -> bool:
+	return slot_index >= 0 and slot_index < _functional.size() and _functional[slot_index]
+
+## Total built lots.
 func building_count() -> int:
 	var n := 0
 	for s in slots:
@@ -311,9 +310,18 @@ func building_count() -> int:
 			n += 1
 	return n
 
-## Maximum residents the city can house (sum of residential lot capacities).
+## Productive buildings that are missing power or road access.
+func disconnected_count() -> int:
+	var n := 0
+	for i in slots.size():
+		var z = slots[i]
+		if z != null and not INFRA_ZONES.has(z) and not _functional[i]:
+			n += 1
+	return n
+
+## Maximum residents the city can house (only functional residential lots).
 func housing_capacity() -> float:
-	return zone_count(Zone.RESIDENTIAL) * RESIDENTIAL_CAPACITY
+	return functional_zone_count(Zone.RESIDENTIAL) * RESIDENTIAL_CAPACITY
 
 ## Average of the five indicators, shifted by how the tax rate sits relative to
 ## the comfortable level (#20).
@@ -324,9 +332,9 @@ func happiness() -> float:
 	var base := total / INDICATORS.size()
 	return clampf(base + (TAX_COMFORT - tax_rate) * TAX_HAPPINESS + _gift_happiness(), 0.0, 100.0)
 
-## Whether a gift building currently stands in the city (its bonus is active).
+## Whether a functional gift building stands in the city (its bonus is active).
 func has_gift(gift: Zone) -> bool:
-	return zone_count(gift) > 0
+	return functional_zone_count(gift) > 0
 
 func _gift_happiness() -> float:
 	var bonus := 0.0
@@ -335,9 +343,9 @@ func _gift_happiness() -> float:
 			bonus += GIFT_HAPPINESS[g]
 	return bonus
 
-## Tax revenue per second at the current rate (residents + businesses).
+## Tax revenue per second at the current rate (residents + functional businesses).
 func tax_income() -> float:
-	var businesses := zone_count(Zone.COMMERCIAL) + zone_count(Zone.INDUSTRIAL)
+	var businesses := functional_zone_count(Zone.COMMERCIAL) + functional_zone_count(Zone.INDUSTRIAL)
 	var income := (population * TAX_PER_RESIDENT + businesses * TAX_PER_BUSINESS) * tax_rate
 	if has_gift(Zone.BANK):
 		income *= 1.0 + BANK_TAX_BONUS
@@ -445,11 +453,8 @@ func _apply_consequence(crisis: CrisisType, delta: float) -> void:
 		CrisisType.EPIDEMIC:
 			population = maxf(0.0, population - 0.1 * delta)
 			money -= 5.0 * delta
-		CrisisType.DROPOUT, CrisisType.GRIDLOCK:
+		CrisisType.DROPOUT:
 			money -= 5.0 * delta
-		CrisisType.BLACKOUT:
-			for ind in INDICATORS:
-				indicators[ind] = maxf(0.0, indicators[ind] - 0.1 * delta)
 
 # --- Serialization (#40, #41) ---
 
@@ -511,34 +516,77 @@ func _sync_slots() -> void:
 		slots.append(null)
 
 func _recompute_rates() -> void:
-	pop_per_sec = zone_count(Zone.RESIDENTIAL) * RESIDENTIAL_POP
+	_recompute_network()
+	pop_per_sec = functional_zone_count(Zone.RESIDENTIAL) * RESIDENTIAL_POP
 	var upkeep := 0.0
 	for s in slots:
 		if s != null:
 			upkeep += ZONE_UPKEEP[s]
 	upkeep_per_sec = upkeep
 
+# Recompute the power + road networks and which buildings are functional.
+func _recompute_network() -> void:
+	var n := slots.size()
+	_powered.resize(n)
+	_road.resize(n)
+	_functional.resize(n)
+	for i in n:
+		_powered[i] = false
+		_road[i] = false
+		_functional[i] = false
+	# Road access: a lot needs an orthogonally adjacent road.
+	for i in n:
+		if slots[i] != null:
+			_road[i] = _has_adjacent_road(i)
+	# Power: flood from plants through conductors (occupied lots that aren't roads).
+	var stack: Array = []
+	for i in n:
+		if slots[i] == Zone.POWER:
+			_powered[i] = true
+			stack.append(i)
+	while not stack.is_empty():
+		var cur: int = stack.pop_back()
+		for nb in _neighbors(cur):
+			if slots[nb] != null and slots[nb] != Zone.ROADS and not _powered[nb]:
+				_powered[nb] = true
+				stack.append(nb)
+	# Functional: infrastructure is always on; productive buildings need power + road.
+	for i in n:
+		var z = slots[i]
+		if z == null:
+			continue
+		if INFRA_ZONES.has(z):
+			_functional[i] = true
+		else:
+			_functional[i] = _powered[i] and _road[i]
+
+func _neighbors(i: int) -> Array:
+	var col := i % GRID_COLS
+	var row := i / GRID_COLS
+	var out: Array = []
+	if col > 0:
+		out.append(i - 1)
+	if col < GRID_COLS - 1:
+		out.append(i + 1)
+	if row > 0:
+		out.append(i - GRID_COLS)
+	if row < GRID_ROWS - 1:
+		out.append(i + GRID_COLS)
+	return out
+
+func _has_adjacent_road(i: int) -> bool:
+	for nb in _neighbors(i):
+		if slots[nb] == Zone.ROADS:
+			return true
+	return false
+
 ## Net rate of change for an indicator (supply from services minus city demand).
 ## Positive = recovering, negative = falling.
 func indicator_rate(ind: Indicator) -> float:
-	var supply := zone_count(SERVICE_FOR[ind]) * SERVICE_BOOST
-	var demand := 0.0
-	match ind:
-		Indicator.SECURITY, Indicator.EDUCATION, Indicator.HEALTH:
-			demand = population * SERVICE_BOOST / RESIDENTS_PER_SERVICE[ind]
-		Indicator.TRAFFIC:
-			demand = building_count() * DEMAND_PER_BUILDING
-		Indicator.ENERGY:
-			demand = _energy_consumers() * ENERGY_DEMAND_PER_BUILDING
+	# Supply from functional (powered + road-connected) services vs population demand.
+	var supply := functional_zone_count(SERVICE_FOR[ind]) * SERVICE_BOOST
+	var demand: float = population * SERVICE_BOOST / RESIDENTS_PER_SERVICE[ind]
 	return supply - demand
-
-## Buildings that draw power — everything except roads and the power plants.
-func _energy_consumers() -> int:
-	var n := 0
-	for s in slots:
-		if s != null and s != Zone.ROADS and s != Zone.POWER:
-			n += 1
-	return n
 
 func _pop_factor() -> float:
 	var h := happiness()

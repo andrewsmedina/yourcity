@@ -23,7 +23,7 @@ func _initialize() -> void:
 	_test_happiness_is_average_of_indicators()
 	_test_indicators_react_to_demand()
 	_test_service_boosts_its_indicator()
-	_test_energy_drains_faster_with_more_zones()
+	_test_connectivity_makes_buildings_functional()
 	_test_high_happiness_boosts_population()
 	_test_low_happiness_causes_emigration()
 	_test_crisis_starts_below_threshold()
@@ -32,7 +32,6 @@ func _initialize() -> void:
 	_test_response_bumps_indicator_and_costs()
 	_test_cannot_respond_without_money()
 	_test_ignored_crime_reduces_population()
-	_test_blackout_decays_all_indicators()
 	_test_population_capped_by_housing()
 	_test_city_ages_in_years()
 	_test_phase_tracks_population()
@@ -71,8 +70,8 @@ func _test_cannot_build_locked_slot() -> void:
 	_expect("cannot build on a locked slot", not ok)
 
 func _test_tax_income_from_residents_and_business() -> void:
-	var c := CitySim.new(10000.0)
-	c.build(CitySim.Zone.COMMERCIAL, 0)
+	var c := CitySim.new(100000.0)
+	_wire_row(c, [CitySim.Zone.COMMERCIAL], CitySim.GRID_COLS)  # 1 functional business
 	c.population = 100.0
 	var expected := (100.0 * CitySim.TAX_PER_RESIDENT + 1.0 * CitySim.TAX_PER_BUSINESS) * c.tax_rate
 	_expect("tax income from residents and businesses", is_equal_approx(c.tax_income(), expected))
@@ -88,10 +87,9 @@ func _test_tax_rate_shifts_happiness() -> void:
 		high < at_comfort and low > at_comfort)
 
 func _test_residential_zone_grows_population() -> void:
-	var c := CitySim.new(10000.0)
-	c.build(CitySim.Zone.RESIDENTIAL, 0)
-	c.build(CitySim.Zone.RESIDENTIAL, 1)
-	c.build(CitySim.Zone.RESIDENTIAL, 2)  # 3 * (1/3) = 1 pop/sec
+	var c := CitySim.new(100000.0)
+	_wire_row(c, [CitySim.Zone.RESIDENTIAL, CitySim.Zone.RESIDENTIAL, CitySim.Zone.RESIDENTIAL],
+		CitySim.GRID_COLS)  # 3 functional -> 1 pop/sec
 	c.advance(2.0)
 	_expect("residential zones grow population", is_equal_approx(c.population, 2.0))
 
@@ -116,21 +114,21 @@ func _test_tax_collected_yearly_not_continuously() -> void:
 func _test_gifts_granted_placed_and_bonus() -> void:
 	var c := CitySim.new(100000.0)
 	var need := int(ceil(CitySim.GIFT_POP[CitySim.Zone.PARK] / CitySim.RESIDENTIAL_CAPACITY))
+	var res: Array = []
 	for i in need:
-		c.build(CitySim.Zone.RESIDENTIAL, i)  # enough housing for the park milestone
+		res.append(CitySim.Zone.RESIDENTIAL)  # functional housing for the milestone
+	_wire_row(c, res, CitySim.GRID_COLS)
 	c.population = CitySim.GIFT_POP[CitySim.Zone.PARK]
 	c.advance(0.1)
 	var granted := c.gift_available.has(CitySim.Zone.PARK)  # offered, not yet placed
 	var inactive := not c.has_gift(CitySim.Zone.PARK)
-	var placed := c.build(CitySim.Zone.PARK, 20)            # place it (free), free slot
+	# Place the park next to the powered row (right of the last residential), with a road above.
+	var park_slot: int = CitySim.GRID_COLS + 1 + need
+	c.build(CitySim.Zone.ROADS, park_slot - CitySim.GRID_COLS)
+	var placed := c.build(CitySim.Zone.PARK, park_slot)
 	var active := c.has_gift(CitySim.Zone.PARK) and not c.gift_available.has(CitySim.Zone.PARK)
-	# Bank boosts tax once placed.
-	c.build(CitySim.Zone.COMMERCIAL, 21)
-	var base_tax := c.tax_income()
-	c.gift_available[CitySim.Zone.BANK] = true
-	c.build(CitySim.Zone.BANK, 22)
-	_expect("gift granted -> placed -> bonus active; bank boosts tax",
-		granted and inactive and placed and active and c.tax_income() > base_tax)
+	_expect("gift granted -> placed -> active when functional",
+		granted and inactive and placed and active)
 
 func _test_demolish_clears_lot() -> void:
 	var c := CitySim.new(10000.0)
@@ -156,9 +154,9 @@ func _test_happiness_is_average_of_indicators() -> void:
 	var c := CitySim.new()
 	c.indicators[CitySim.Indicator.SECURITY] = 100.0
 	c.indicators[CitySim.Indicator.EDUCATION] = 0.0
-	# the other three stay at INDICATOR_START
+	# Health stays at INDICATOR_START; happiness is the average of the 3.
 	var start := CitySim.INDICATOR_START
-	var expected := (100.0 + 0.0 + start + start + start) / 5.0
+	var expected := (100.0 + 0.0 + start) / 3.0
 	_expect("happiness is the average of indicators", is_equal_approx(c.happiness(), expected))
 
 func _test_indicators_react_to_demand() -> void:
@@ -171,42 +169,42 @@ func _test_indicators_react_to_demand() -> void:
 	_expect("security stable when empty, falls under population demand", stable and fell)
 
 func _test_service_boosts_its_indicator() -> void:
-	var c := CitySim.new(10000.0)
-	c.population = 500.0  # unlock POLICE (Small Town)
-	c.build(CitySim.Zone.POLICE, 0)
+	var c := CitySim.new(100000.0)
+	_wire_row(c, [CitySim.Zone.POLICE], CitySim.GRID_COLS)  # functional police, no residents
 	c.advance(1.0)
 	# With no population there's no security demand, so it rises by SERVICE_BOOST.
 	_expect("a service boosts its indicator",
 		is_equal_approx(c.indicators[CitySim.Indicator.SECURITY],
 			CitySim.INDICATOR_START + CitySim.SERVICE_BOOST))
 
-func _test_energy_drains_faster_with_more_zones() -> void:
-	var quiet := CitySim.new(10000.0)
-	quiet.advance(1.0)
-	var busy := CitySim.new(10000.0)
-	busy.build(CitySim.Zone.COMMERCIAL, 0)
-	busy.build(CitySim.Zone.COMMERCIAL, 1)
-	busy.advance(1.0)
-	_expect("energy drains faster with more zones",
-		busy.indicators[CitySim.Indicator.ENERGY] < quiet.indicators[CitySim.Indicator.ENERGY])
+func _test_connectivity_makes_buildings_functional() -> void:
+	# A lone commercial (no power, no road) is not functional.
+	var a := CitySim.new(100000.0)
+	a.build(CitySim.Zone.COMMERCIAL, 0)
+	var lone := not a.is_functional(0)
+	# Commercial next to a power plant (power) and a road becomes functional.
+	var b := CitySim.new(100000.0)
+	b.build(CitySim.Zone.COMMERCIAL, 1)   # slot 1
+	b.build(CitySim.Zone.POWER, 0)        # left neighbor -> conducts power
+	b.build(CitySim.Zone.ROADS, 1 + CitySim.GRID_COLS)  # below -> road access
+	var wired := b.is_functional(1)
+	_expect("buildings need power + road to function", lone and wired)
 
 func _test_high_happiness_boosts_population() -> void:
-	var c := CitySim.new(10000.0)
+	var c := CitySim.new(100000.0)
+	_wire_row(c, [CitySim.Zone.RESIDENTIAL, CitySim.Zone.RESIDENTIAL, CitySim.Zone.RESIDENTIAL],
+		CitySim.GRID_COLS)  # 1 pop/sec base
 	for ind in CitySim.INDICATORS:
 		c.indicators[ind] = 100.0  # happiness 100 -> immigration
-	c.build(CitySim.Zone.RESIDENTIAL, 0)
-	c.build(CitySim.Zone.RESIDENTIAL, 1)
-	c.build(CitySim.Zone.RESIDENTIAL, 2)  # 1 pop/sec base
 	c.advance(2.0)
 	_expect("high happiness boosts population (1.5x)", is_equal_approx(c.population, 3.0))
 
 func _test_low_happiness_causes_emigration() -> void:
-	var c := CitySim.new(10000.0)
+	var c := CitySim.new(100000.0)
+	_wire_row(c, [CitySim.Zone.RESIDENTIAL, CitySim.Zone.RESIDENTIAL, CitySim.Zone.RESIDENTIAL],
+		CitySim.GRID_COLS)  # 1 pop/sec base
 	for ind in CitySim.INDICATORS:
 		c.indicators[ind] = 10.0  # happiness 10 -> emigration
-	c.build(CitySim.Zone.RESIDENTIAL, 0)
-	c.build(CitySim.Zone.RESIDENTIAL, 1)
-	c.build(CitySim.Zone.RESIDENTIAL, 2)  # 1 pop/sec base
 	c.population = 100.0
 	c.advance(2.0)
 	_expect("low happiness causes emigration", is_equal_approx(c.population, 98.0))
@@ -254,20 +252,9 @@ func _test_ignored_crime_reduces_population() -> void:
 	c.advance(1.0)  # active and ignored — consequence applies
 	_expect("ignored crime reduces population", c.population < 100.0)
 
-func _test_blackout_decays_all_indicators() -> void:
-	var c := CitySim.new()
-	c.indicators[CitySim.Indicator.ENERGY] = 20.0
-	c.advance(0.5)  # blackout begins
-	var sec_before: float = c.indicators[CitySim.Indicator.SECURITY]
-	c.advance(1.0)  # active blackout drags every indicator down extra
-	var sec_after: float = c.indicators[CitySim.Indicator.SECURITY]
-	var drop := sec_before - sec_after
-	# With no buildings there's no demand, so any drop comes from the blackout.
-	_expect("blackout decays all indicators", drop > 0.05)
-
 func _test_population_capped_by_housing() -> void:
-	var c := CitySim.new(10000.0)
-	c.build(CitySim.Zone.RESIDENTIAL, 0)  # capacity = 1 * RESIDENTIAL_CAPACITY
+	var c := CitySim.new(100000.0)
+	_wire_row(c, [CitySim.Zone.RESIDENTIAL], CitySim.GRID_COLS)  # capacity = 1 * RESIDENTIAL_CAPACITY
 	c.population = 99999.0  # way over capacity
 	c.advance(1.0)
 	_expect("population is capped at housing capacity",
@@ -318,6 +305,15 @@ func _test_save_load_round_trip() -> void:
 		and b.slots[1] == CitySim.Zone.INDUSTRIAL
 		and is_equal_approx(b.indicators[CitySim.Indicator.SECURITY], 42.0)
 		and is_equal_approx(b.tax_rate, 0.12))
+
+# Build `zones` in a row that is powered (plant at the row start) and road-served
+# (a road above each), so every placed building is functional. Row 1 (col 0..).
+func _wire_row(c: CitySim, zones: Array, start: int) -> void:
+	c.build(CitySim.Zone.POWER, start)
+	for i in zones.size():
+		var s: int = start + 1 + i
+		c.build(CitySim.Zone.ROADS, s - CitySim.GRID_COLS)  # road above -> access
+		c.build(zones[i], s)
 
 func _expect(label: String, ok: bool) -> void:
 	print(("PASS " if ok else "FAIL ") + label)

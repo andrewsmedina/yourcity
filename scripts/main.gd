@@ -17,6 +17,7 @@ const _ZONE_KEYS := {
 	KEY_6: CitySim.Zone.HOSPITAL,
 	KEY_7: CitySim.Zone.ROADS,
 	KEY_8: CitySim.Zone.POWER,
+	KEY_9: CitySim.Zone.POWERLINE,
 }
 
 func _ready() -> void:

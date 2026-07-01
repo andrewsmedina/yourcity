@@ -21,6 +21,7 @@ const ZONE_EMOJI := {
 	CitySim.Zone.HOSPITAL: "🏥",
 	CitySim.Zone.ROADS: "🛣️",
 	CitySim.Zone.POWER: "⚡",
+	CitySim.Zone.POWERLINE: "🔌",
 	CitySim.Zone.PARK: "🌳",
 	CitySim.Zone.BANK: "🏦",
 	CitySim.Zone.STADIUM: "🏟️",
@@ -117,7 +118,7 @@ func _draw() -> void:
 		elif sim.slots[i] == null:
 			_draw_empty(rect, pulse)
 		else:
-			_draw_building(rect, sim.slots[i], tile)
+			_draw_building(rect, sim.slots[i], tile, sim.is_functional(i))
 
 # Build palette lives below the indicators in the left sidebar. It lists the 8
 # buildable zones plus any granted-but-unplaced gifts.
@@ -135,7 +136,7 @@ func _palette_item_rect(i: int) -> Rect2:
 	return Rect2(8.0, _palette_top() + i * PALETTE_ROW, GRID_LEFT - 16.0, PALETTE_ROW - 4.0)
 
 func _draw_palette() -> void:
-	draw_string(_font, Vector2(12.0, _palette_top() - 8.0), "CONSTRUIR (1-8) · dir = remover ($10)",
+	draw_string(_font, Vector2(12.0, _palette_top() - 8.0), "CONSTRUIR (1-9) · dir = remover ($10)",
 		HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(0.8, 0.85, 0.95))
 	var zones := _palette_zones()
 	for i in zones.size():
@@ -202,11 +203,16 @@ func _draw_empty(rect: Rect2, pulse: float) -> void:
 	draw_line(c - Vector2(s, 0), c + Vector2(s, 0), Color(1, 1, 1, pulse), 2.0)
 	draw_line(c - Vector2(0, s), c + Vector2(0, s), Color(1, 1, 1, pulse), 2.0)
 
-func _draw_building(rect: Rect2, zone: int, tile: float) -> void:
+func _draw_building(rect: Rect2, zone: int, tile: float, functional: bool) -> void:
 	if _zone_textures.has(zone):
-		draw_texture_rect(_zone_textures[zone], rect, false)
+		draw_texture_rect(_zone_textures[zone], rect,
+			false, Color.WHITE if functional else Color(1, 1, 1, 0.35))
 		return
 	var emoji: String = ZONE_EMOJI[zone]
 	var font_size := maxi(8, int(tile * 0.85))  # bigger — no background behind it
+	var tint := Color.WHITE if functional else Color(1, 1, 1, 0.35)  # dim if no power/road
 	draw_string(_emoji_font, Vector2(rect.position.x, rect.get_center().y + font_size * 0.35),
-		emoji, HORIZONTAL_ALIGNMENT_CENTER, rect.size.x, font_size)
+		emoji, HORIZONTAL_ALIGNMENT_CENTER, rect.size.x, font_size, tint)
+	if not functional:  # warn: needs power + road
+		draw_string(_emoji_font, Vector2(rect.position.x, rect.position.y + tile * 0.35),
+			"⚠️", HORIZONTAL_ALIGNMENT_CENTER, rect.size.x, int(tile * 0.4))
