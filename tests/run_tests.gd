@@ -115,19 +115,20 @@ func _test_tax_collected_yearly_not_continuously() -> void:
 
 func _test_gifts_granted_placed_and_bonus() -> void:
 	var c := CitySim.new(100000.0)
-	c.build(CitySim.Zone.RESIDENTIAL, 0)
-	c.build(CitySim.Zone.RESIDENTIAL, 1)  # capacity 500
-	c.population = 500.0
+	var need := int(ceil(CitySim.GIFT_POP[CitySim.Zone.PARK] / CitySim.RESIDENTIAL_CAPACITY))
+	for i in need:
+		c.build(CitySim.Zone.RESIDENTIAL, i)  # enough housing for the park milestone
+	c.population = CitySim.GIFT_POP[CitySim.Zone.PARK]
 	c.advance(0.1)
 	var granted := c.gift_available.has(CitySim.Zone.PARK)  # offered, not yet placed
 	var inactive := not c.has_gift(CitySim.Zone.PARK)
-	var placed := c.build(CitySim.Zone.PARK, 5)             # place it (free)
+	var placed := c.build(CitySim.Zone.PARK, 20)            # place it (free), free slot
 	var active := c.has_gift(CitySim.Zone.PARK) and not c.gift_available.has(CitySim.Zone.PARK)
 	# Bank boosts tax once placed.
-	c.build(CitySim.Zone.COMMERCIAL, 6)
+	c.build(CitySim.Zone.COMMERCIAL, 21)
 	var base_tax := c.tax_income()
 	c.gift_available[CitySim.Zone.BANK] = true
-	c.build(CitySim.Zone.BANK, 7)
+	c.build(CitySim.Zone.BANK, 22)
 	_expect("gift granted -> placed -> bonus active; bank boosts tax",
 		granted and inactive and placed and active and c.tax_income() > base_tax)
 
